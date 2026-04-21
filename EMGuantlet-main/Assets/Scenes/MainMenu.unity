@@ -3341,6 +3341,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bab4382f0707bdf4fb1b65d0014d1dc6, type: 2}
   - {fileID: 11400000, guid: 4cc605f5cab4b0f4f9e9d3abd7a8a52d, type: 2}
   - {fileID: 11400000, guid: ff37192e7cfcb0349ad1d099d2f93b2f, type: 2}
+  availableMaps:
+  - {fileID: 11400000, guid: a2d870e76cd0eba489fe60ae317c6517, type: 2}
+  - {fileID: 11400000, guid: f2b8fa0700c57d34f9afa2d02b13cf7c, type: 2}
+  - {fileID: 11400000, guid: bcf72c4bf5e870b45a80931bbe1c33e4, type: 2}
+  - {fileID: 11400000, guid: e7f996d8a6f3bf845b973125994ac4c7, type: 2}
 --- !u!4 &1766168942
 Transform:
   m_ObjectHideFlags: 0

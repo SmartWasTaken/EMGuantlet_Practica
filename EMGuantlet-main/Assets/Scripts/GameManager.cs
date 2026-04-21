@@ -22,7 +22,21 @@ public class GameManager : NetworkBehaviour
 
     public int EnemiesKilled { get; private set; }
     public PlayerStats SelectedCharacterStats { get; set; }
-    public MapConfig SelectedMapConfig { get; set; }
+
+    public NetworkVariable<int> networkedMapIndex = new NetworkVariable<int>(0);
+
+    public MapConfig SelectedMapConfig
+    {
+        get
+        {
+            if (availableMaps == null || availableMaps.Length == 0) return null;
+
+            int index = networkedMapIndex.Value;
+            if (index < 0 || index >= availableMaps.Length) return availableMaps[0];
+
+            return availableMaps[index];
+        }
+    }
 
     [SerializeField] private float delayBeforeScene = 0.5f;
 
@@ -33,6 +47,9 @@ public class GameManager : NetworkBehaviour
 
     [Header("Base de Datos de Personajes")]
     [SerializeField] public PlayerStats[] allCharacters;
+
+    [Header("Base de Datos de Mapas")]
+    [SerializeField] public MapConfig[] availableMaps;
 
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
@@ -117,7 +134,6 @@ public class GameManager : NetworkBehaviour
     {
         ulong id = rpcParams.Receive.SenderClientId;
 
-        // Si el nombre está vacío o es "Jugador X", asignamos uno oficial
         if (string.IsNullOrEmpty(name) || name.StartsWith("Jugador"))
         {
             name = "Jugador " + (playerNames.Count + 1);
@@ -127,7 +143,17 @@ public class GameManager : NetworkBehaviour
         CharSelectionMenuButtonsHandler.Instance?.AddLogMessageClientRpc($"{name} se ha unido a la sala.", -1);
     }
 
-    public string GetPlayerName(ulong id) => playerNames.ContainsKey(id) ? playerNames[id] : "Desconocido";
+    public string GetPlayerName(ulong id)
+    {
+        if (playerNames.ContainsKey(id))
+        {
+            return playerNames[id];
+        }
+
+        string emergencyName = "Jugador " + (playerNames.Count + 1);
+        playerNames[id] = emergencyName;
+        return emergencyName;
+    }
 
     public bool IsColorTaken(int index) => playerSelections.ContainsValue(index);
 
@@ -263,7 +289,18 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public void StartGame(PlayerStats selectedCharacter, MapConfig selectedMap)
     {
-        SelectedMapConfig = selectedMap;
+        if (availableMaps != null)
+        {
+            for (int i = 0; i < availableMaps.Length; i++)
+            {
+                if (availableMaps[i] == selectedMap)
+                {
+                    networkedMapIndex.Value = i;
+                    break;
+                }
+            }
+        }
+
         StartGame(selectedCharacter);
     }
 

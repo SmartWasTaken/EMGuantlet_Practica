@@ -50,6 +50,17 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         if (IsHost)
             AddLogMessageClientRpc("Servidor creado por " + MainMenuButtonsHandler.LocalPlayerName, -1);
 
+        if (IsHost && mapsDropdown != null && GameManager.Instance.availableMaps != null)
+        {
+            mapsDropdown.ClearOptions();
+            List<TMP_Dropdown.OptionData> options = new List<TMP_Dropdown.OptionData>();
+            foreach (var map in GameManager.Instance.availableMaps)
+            {
+                options.Add(new TMP_Dropdown.OptionData(map.mapName));
+            }
+            mapsDropdown.AddOptions(options);
+        }
+
         foreach (var ownerVar in colorOwners)
         {
             ownerVar.OnValueChanged += OnColorOwnerChanged;
@@ -237,7 +248,22 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 
     public void OnStartGameClicked()
     {
-        if (IsHost)
-            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
+        if (!IsHost) return;
+
+        foreach (ulong clientId in NetworkManager.Singleton.ConnectedClientsIds)
+        {
+            if (GameManager.Instance.GetPlayerSelection(clientId) == -1)
+            {
+                AddLogMessageClientRpc("<color=#FF0000>¡No se puede empezar! Todos deben elegir color.</color>", -1);
+                return;
+            }
+        }
+
+        if (mapsDropdown != null && GameManager.Instance.availableMaps != null)
+        {
+            GameManager.Instance.networkedMapIndex.Value = mapsDropdown.value;
+        }
+
+        NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
     }
 }
