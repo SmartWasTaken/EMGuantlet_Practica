@@ -12,6 +12,8 @@ public class PlayerController : CharController
     public bool IsAttacking { get; private set; } = false;
     public int DamageToEnemy => damageToEnemy;
 
+    public NetworkVariable<int> netCharacterIndex = new NetworkVariable<int>(-1);
+
     /// <summary>
     /// Inicializa controles de entrada y registra el jugador local en el gestor global.
     /// </summary>
@@ -37,14 +39,38 @@ public class PlayerController : CharController
             if (GameManager.Instance != null)
                 GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
         }
+        netCharacterIndex.OnValueChanged += OnCharacterIndexChanged;
+
+        if (netCharacterIndex.Value != -1)
+        {
+            LoadStatsFromNetwork(netCharacterIndex.Value);
+        }
     }
 
     public override void OnNetworkDespawn()
     {
+        netCharacterIndex.OnValueChanged -= OnCharacterIndexChanged;
         if (IsOwner && controls != null)
         {
             controls.Player.Attack.performed -= onAttack;
             controls.Disable();
+        }
+        base.OnNetworkDespawn();
+    }
+
+    private void OnCharacterIndexChanged(int previousValue, int newValue)
+    {
+        if (newValue != -1)
+        {
+            LoadStatsFromNetwork(newValue);
+        }
+    }
+
+    private void LoadStatsFromNetwork(int index)
+    {
+        if (GameManager.Instance != null && index >= 0 && index < GameManager.Instance.allCharacters.Length)
+        {
+            ApplyCharacterStats(GameManager.Instance.allCharacters[index]);
         }
     }
 
@@ -141,6 +167,23 @@ public class PlayerController : CharController
 
         LoadStats();
         Debug.Log($"[PlayerController] Red aplicó personaje: {newStats.characterName}");
+
+        if (IsOwner)
+        {
+            if (GameManager.Instance != null && pStats != null)
+            {
+                GameManager.Instance.SelectedCharacterStats = pStats;
+            }
+
+            HeadUpDisplayController hud = FindFirstObjectByType<HeadUpDisplayController>();
+            if (hud != null)
+            {
+                hud.InitializeHUD();
+            }
+            GameEvents.HealthChanged(health);
+            GameEvents.KeysChanged();
+            GameEvents.DiamondsChanged();
+        }
     }
 
     /// <summary>

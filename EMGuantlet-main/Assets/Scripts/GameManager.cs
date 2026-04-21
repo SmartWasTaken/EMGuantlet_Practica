@@ -119,7 +119,12 @@ public class GameManager : NetworkBehaviour
         {
             playerSelections.Remove(clientId);
             playerNames.Remove(clientId);
-            CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUI();
+            SyncNamesToClients();
+
+            if (CharSelectionMenuButtonsHandler.Instance != null)
+            {
+                CharSelectionMenuButtonsHandler.Instance.RefreshLobbyUI();
+            }
         }
 
         if (clientId == NetworkManager.Singleton.LocalClientId)
@@ -141,7 +146,56 @@ public class GameManager : NetworkBehaviour
         }
 
         playerNames[id] = name;
-        CharSelectionMenuButtonsHandler.Instance?.AddLogMessageClientRpc($"{name} se ha unido a la sala.", -1);
+
+        if (CharSelectionMenuButtonsHandler.Instance != null)
+        {
+            CharSelectionMenuButtonsHandler.Instance.AddLogMessageClientRpc($"{name} se ha unido a la sala.", -1);
+        }
+
+        SyncNamesToClients();
+    }
+
+    private void SyncNamesToClients()
+    {
+        string payload = "";
+        foreach (var kvp in playerNames)
+        {
+            payload += $"{kvp.Key}:{kvp.Value}|";
+        }
+
+        if (payload.EndsWith("|"))
+        {
+            payload = payload.Substring(0, payload.Length - 1);
+        }
+
+        UpdateNamesDictionaryClientRpc(payload);
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void UpdateNamesDictionaryClientRpc(string payload)
+    {
+        if (!IsServer)
+        {
+            playerNames.Clear();
+
+            if (!string.IsNullOrEmpty(payload))
+            {
+                string[] playerPairs = payload.Split('|');
+                foreach (string pair in playerPairs)
+                {
+                    string[] data = pair.Split(':');
+                    if (data.Length == 2 && ulong.TryParse(data[0], out ulong id))
+                    {
+                        playerNames[id] = data[1];
+                    }
+                }
+            }
+        }
+
+        if (CharSelectionMenuButtonsHandler.Instance != null)
+        {
+            CharSelectionMenuButtonsHandler.Instance.RefreshLobbyUI();
+        }
     }
 
     public string GetPlayerName(ulong id)
@@ -162,14 +216,22 @@ public class GameManager : NetworkBehaviour
     {
         if (!IsServer) return;
         playerSelections[clientId] = characterIndex;
-        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUI();
+
+        if (CharSelectionMenuButtonsHandler.Instance != null)
+        {
+            CharSelectionMenuButtonsHandler.Instance.RefreshLobbyUI();
+        }
     }
 
     public void RemovePlayerSelection(ulong clientId)
     {
         if (!IsServer) return;
         playerSelections.Remove(clientId);
-        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUI();
+
+        if (CharSelectionMenuButtonsHandler.Instance != null)
+        {
+            CharSelectionMenuButtonsHandler.Instance.RefreshLobbyUI();
+        }
     }
 
     public int GetPlayerSelection(ulong clientId) => playerSelections.ContainsKey(clientId) ? playerSelections[clientId] : -1;

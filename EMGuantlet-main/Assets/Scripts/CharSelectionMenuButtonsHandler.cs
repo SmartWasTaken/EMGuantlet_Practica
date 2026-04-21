@@ -77,6 +77,15 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         }
     }
 
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
     public void OnBackButtonClicked()
     {
         if (NetworkManager.Singleton != null)

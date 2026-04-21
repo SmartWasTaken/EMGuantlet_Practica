@@ -1,5 +1,6 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class HeadUpDisplayController : MonoBehaviour
 {
@@ -16,6 +17,9 @@ public class HeadUpDisplayController : MonoBehaviour
     {
         public HudSlot slot;
         public GameObject root;
+
+        [Header("Player Info")]
+        public TextMeshProUGUI textPlayerName;
 
         [Header("Hearts")]
         public Image imageHeartTens;
@@ -51,16 +55,16 @@ public class HeadUpDisplayController : MonoBehaviour
     private HudBlock activeBlock;
 
     /// <summary>
-    /// Resuelve el bloque activo según el personaje seleccionado y actualiza su visibilidad inicial.
+    /// Dejamos el Awake vacÃ­o porque en multijugador debemos esperar 
+    /// a que la red nos confirme quÃ© personaje somos antes de encender el HUD.
     /// </summary>
     private void Awake()
     {
-        resolveActiveBlockFromSelectedCharacter();
-        refreshBlockVisibility();
+        // Se ha movido la inicializaciÃ³n a InitializeHUD()
     }
 
     /// <summary>
-    /// Suscribe los eventos de actualización del HUD al habilitar el componente.
+    /// Suscribe los eventos de actualizaciÃ³n del HUD al habilitar el componente.
     /// </summary>
     private void OnEnable()
     {
@@ -70,7 +74,7 @@ public class HeadUpDisplayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Desuscribe los eventos de actualización del HUD al deshabilitar el componente.
+    /// Desuscribe los eventos de actualizaciÃ³n del HUD al deshabilitar el componente.
     /// </summary>
     private void OnDisable()
     {
@@ -80,7 +84,22 @@ public class HeadUpDisplayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Actualiza los dígitos de vida del bloque de HUD activo.
+    /// MÃ©todo que serÃ¡ llamado por el Jugador cuando ya tenga sus datos de red cargados.
+    /// </summary>
+    public void InitializeHUD()
+    {
+        resolveActiveBlockFromSelectedCharacter();
+        refreshBlockVisibility();
+
+        if (activeBlock != null && activeBlock.textPlayerName != null && Unity.Netcode.NetworkManager.Singleton != null)
+        {
+            ulong myId = Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+            activeBlock.textPlayerName.text = GameManager.Instance.GetPlayerName(myId);
+        }
+    }
+
+    /// <summary>
+    /// Actualiza los dÃ­gitos de vida del bloque de HUD activo.
     /// </summary>
     public void UpdateHearts(int hearts)
     {
@@ -102,7 +121,7 @@ public class HeadUpDisplayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Actualiza el dígito de llaves del bloque de HUD activo.
+    /// Actualiza el dÃ­gito de llaves del bloque de HUD activo.
     /// </summary>
     public void UpdateKeys()
     {
@@ -117,7 +136,7 @@ public class HeadUpDisplayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Actualiza los dígitos de diamantes del bloque de HUD activo.
+    /// Actualiza los dÃ­gitos de diamantes del bloque de HUD activo.
     /// </summary>
     public void UpdateDiamonds()
     {
@@ -143,7 +162,7 @@ public class HeadUpDisplayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Determina el bloque HUD activo en función del nombre del personaje seleccionado.
+    /// Determina el bloque HUD activo en funciÃ³n del nombre del personaje seleccionado.
     /// </summary>
     private void resolveActiveBlockFromSelectedCharacter()
     {
@@ -163,22 +182,6 @@ public class HeadUpDisplayController : MonoBehaviour
     /// <summary>
     /// Busca y devuelve el bloque de HUD asociado al slot indicado.
     /// </summary>
-    private HudBlock findBlockBySlot(HudSlot slot)
-    {
-        if (hudBlocks == null) return null;
-
-        for (int i = 0; i < hudBlocks.Length; i++)
-        {
-            if (hudBlocks[i] != null && hudBlocks[i].slot == slot)
-                return hudBlocks[i];
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Activa u oculta bloques de HUD según la configuración y el bloque seleccionado.
-    /// </summary>
     private void refreshBlockVisibility()
     {
         if (hudBlocks == null) return;
@@ -193,8 +196,21 @@ public class HeadUpDisplayController : MonoBehaviour
         }
     }
 
+    private HudBlock findBlockBySlot(HudSlot slot)
+    {
+        if (hudBlocks == null) return null;
+
+        for (int i = 0; i < hudBlocks.Length; i++)
+        {
+            if (hudBlocks[i] != null && hudBlocks[i].slot == slot)
+                return hudBlocks[i];
+        }
+
+        return null;
+    }
+
     /// <summary>
-    /// Devuelve el sprite correspondiente al dígito solicitado.
+    /// Devuelve el sprite correspondiente al dÃ­gito solicitado.
     /// </summary>
     private Sprite getSpriteForDigit(int digit)
     {

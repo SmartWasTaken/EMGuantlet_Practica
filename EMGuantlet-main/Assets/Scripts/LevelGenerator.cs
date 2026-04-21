@@ -82,20 +82,21 @@ public class LevelGenerator : NetworkBehaviour
     /// </summary>
     public override void OnNetworkSpawn()
     {
-        int seed = GameManager.Instance.networkedMapSeed.Value;
-
         if (IsServer)
         {
+            // Si por algún motivo el mapa es nulo, forzamos el índice 0 en la red
             if (GameManager.Instance != null && GameManager.Instance.SelectedMapConfig == null)
             {
                 GameManager.Instance.networkedMapIndex.Value = 0;
             }
-            generateMapWithSeed(seed);
+
+            mapSeed.Value = Random.Range(0, 1000000);
+            generateMapWithSeed(mapSeed.Value);
             spawnNetworkPlayers();
         }
         else
         {
-            generateMapWithSeed(seed);
+            generateMapWithSeed(mapSeed.Value);
         }
     }
 
