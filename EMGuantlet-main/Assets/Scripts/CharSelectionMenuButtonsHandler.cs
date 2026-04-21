@@ -262,8 +262,14 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         if (mapsDropdown != null && GameManager.Instance.availableMaps != null)
         {
             GameManager.Instance.networkedMapIndex.Value = mapsDropdown.value;
+            GameManager.Instance.networkedMapSeed.Value = Random.Range(1, 1000000); 
         }
+        StartCoroutine(LoadSceneWithDelay());
+    }
 
+    private System.Collections.IEnumerator LoadSceneWithDelay()
+    {
+        yield return new WaitForSeconds(0.2f);
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
     }
 }

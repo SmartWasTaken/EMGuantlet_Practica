@@ -24,6 +24,7 @@ public class GameManager : NetworkBehaviour
     public PlayerStats SelectedCharacterStats { get; set; }
 
     public NetworkVariable<int> networkedMapIndex = new NetworkVariable<int>(0);
+    public NetworkVariable<int> networkedMapSeed = new NetworkVariable<int>(0);
 
     public MapConfig SelectedMapConfig
     {

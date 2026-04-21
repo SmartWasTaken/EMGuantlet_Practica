@@ -878,7 +878,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.5921569, g: 0.84705883, b: 0.7254902, a: 1}
+  m_Color: {r: 0.84705883, g: 0.73606855, b: 0.5921569, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -3335,6 +3335,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
+  networkedMapIndex:
+    m_InternalValue: 0
+  networkedMapSeed:
+    m_InternalValue: 0
   delayBeforeScene: 0.5
   allCharacters:
   - {fileID: 11400000, guid: 010a2fba8cd64a546ad9b0618ce3a0fe, type: 2}
