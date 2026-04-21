@@ -75,6 +75,52 @@ public class GameManager : NetworkBehaviour
         GameEvents.OnPlayerDied -= onPlayerDeath;
     }
 
+    /// <summary>
+    /// Nos suscribimos al evento de desconexión cuando el GameManager entra en la red.
+    /// </summary>
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback += HandleClientDisconnect;
+        }
+    }
+
+    /// <summary>
+    /// Nos desuscribimos por seguridad al destruir la red.
+    /// </summary>
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnect;
+        }
+    }
+
+    /// <summary>
+    /// Gestiona las caídas de conexión (tanto cierres voluntarios como crasheos).
+    /// </summary>
+    private void HandleClientDisconnect(ulong clientId)
+    {
+        if (IsServer)
+        {
+            if (playerSelections.ContainsKey(clientId))
+            {
+                playerSelections.Remove(clientId);
+                Debug.Log($"[GameManager] Cliente {clientId} desconectado. Datos eliminados del registro.");
+            }
+        }
+
+        if (clientId == NetworkManager.Singleton.LocalClientId)
+        {
+            Debug.LogWarning("[GameManager] Conexión perdida o finalizada. Volviendo al Menú Principal...");
+            NetworkManager.Singleton.Shutdown();
+            SceneManager.LoadScene(SceneNames.MainMenu);
+        }
+    }
+
     public void StorePlayerSelection(ulong clientId, int characterIndex)
     {
         if (!IsServer) return;
