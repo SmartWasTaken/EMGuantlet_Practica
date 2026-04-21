@@ -198,6 +198,8 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    public bool HasPlayerName(ulong id) => playerNames.ContainsKey(id);
+
     public string GetPlayerName(ulong id)
     {
         if (playerNames.ContainsKey(id))

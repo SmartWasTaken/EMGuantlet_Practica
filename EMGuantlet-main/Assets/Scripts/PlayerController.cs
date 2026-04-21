@@ -175,15 +175,36 @@ public class PlayerController : CharController
                 GameManager.Instance.SelectedCharacterStats = pStats;
             }
 
-            HeadUpDisplayController hud = FindFirstObjectByType<HeadUpDisplayController>();
-            if (hud != null)
-            {
-                hud.InitializeHUD();
-            }
-            GameEvents.HealthChanged(health);
-            GameEvents.KeysChanged();
-            GameEvents.DiamondsChanged();
+            StartCoroutine(WaitForDataAndInitializeHUD());
         }
+    }
+
+    //barrera condicional
+    private System.Collections.IEnumerator WaitForDataAndInitializeHUD()
+    {
+        HeadUpDisplayController hud = null;
+
+        while (hud == null)
+        {
+            hud = FindFirstObjectByType<HeadUpDisplayController>();
+            yield return null;
+        }
+
+        if (NetworkManager.Singleton != null)
+        {
+            ulong myId = Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+            while (GameManager.Instance != null && !GameManager.Instance.HasPlayerName(myId))
+            {
+                yield return null;
+            }
+        }
+
+        yield return new WaitForSeconds(0.1f);
+
+        hud.InitializeHUD();
+        GameEvents.HealthChanged(health);
+        GameEvents.KeysChanged();
+        GameEvents.DiamondsChanged();
     }
 
     /// <summary>
