@@ -13,18 +13,23 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI logText;
     [SerializeField] private GameObject deselectText;
 
+    [Header("Nombres sobre los botones (¡NUEVO!)")]
+    [SerializeField] private TextMeshProUGUI[] colorNameLabels;
+
     [Header("Botones de Color")]
-    [SerializeField] private Button[] colorButtons; // 0:Verde, 1:Morado, 2:Rojo, 3:Amarillo
-    private string[] hexColors = { "#00FF00", "#A020F0", "#FF0000", "#FFFF00" };
+    [SerializeField] private Button[] colorButtons;
+    private string[] hexColors = { "#FFFF00", "#FF0000", "#A020F0", "#00FF00" };
 
     [Header("Panel Host")]
     [SerializeField] private GameObject hostPanel;
     [SerializeField] private TMP_Dropdown mapsDropdown;
 
-    private NetworkVariable<long> ownerGreen = new NetworkVariable<long>(-1);
-    private NetworkVariable<long> ownerPurple = new NetworkVariable<long>(-1);
-    private NetworkVariable<long> ownerRed = new NetworkVariable<long>(-1);
+    [SerializeField] private ScrollRect logScrollRect;
+
     private NetworkVariable<long> ownerYellow = new NetworkVariable<long>(-1);
+    private NetworkVariable<long> ownerRed = new NetworkVariable<long>(-1);
+    private NetworkVariable<long> ownerPurple = new NetworkVariable<long>(-1);
+    private NetworkVariable<long> ownerGreen = new NetworkVariable<long>(-1);
 
     private NetworkVariable<long>[] colorOwners;
     private List<string> rawMessages = new List<string>();
@@ -32,13 +37,13 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     private void Awake()
     {
         Instance = this;
-        colorOwners = new NetworkVariable<long>[] { ownerGreen, ownerPurple, ownerRed, ownerYellow };
+        colorOwners = new NetworkVariable<long>[] { ownerYellow, ownerRed, ownerPurple, ownerGreen };
     }
 
     public override void OnNetworkSpawn()
     {
         hostPanel.SetActive(IsHost);
-        deselectText.SetActive(false);
+        if (deselectText != null) deselectText.SetActive(false);
 
         GameManager.Instance.RegisterPlayerServerRpc(MainMenuButtonsHandler.LocalPlayerName);
 
@@ -81,7 +86,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         UpdateLogDisplay();
     }
 
-    public void RefreshLobbyUi()
+    public void RefreshLobbyUI()
     {
         RefreshLobbyUiLocal();
     }
@@ -95,23 +100,52 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 
         for (int i = 0; i < colorOwners.Length; i++)
         {
-            if (colorOwners[i].Value == (long)myId)
+            long currentOwnerId = colorOwners[i].Value;
+
+            if (colorNameLabels != null && i < colorNameLabels.Length && colorNameLabels[i] != null)
+            {
+                if (currentOwnerId != -1)
+                {
+                    colorNameLabels[i].text = GameManager.Instance.GetPlayerName((ulong)currentOwnerId);
+                }
+                else
+                {
+                    colorNameLabels[i].text = "";
+                }
+            }
+
+            if (currentOwnerId == (long)myId)
             {
                 mySelection = i;
-                break;
             }
         }
 
-        if (deselectText != null)
-        {
-            deselectText.SetActive(mySelection != -1);
-        }
+        if (deselectText != null) deselectText.SetActive(mySelection != -1);
+
+        if (colorButtons == null) return;
 
         for (int i = 0; i < colorButtons.Length; i++)
         {
+            if (i >= colorOwners.Length) break;
+            if (colorButtons[i] == null) continue;
+
             bool isTakenByAnyone = colorOwners[i].Value != -1;
             bool isTakenByMe = colorOwners[i].Value == (long)myId;
+
             colorButtons[i].interactable = !isTakenByAnyone || isTakenByMe;
+
+            ColorBlock cb = colorButtons[i].colors;
+            if (isTakenByMe)
+            {
+                cb.normalColor = Color.gray;
+                cb.highlightedColor = Color.gray;
+            }
+            else
+            {
+                cb.normalColor = Color.white;
+                cb.highlightedColor = new Color(0.9f, 0.9f, 0.9f);
+            }
+            colorButtons[i].colors = cb;
         }
     }
 
@@ -122,6 +156,21 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         {
             logText.text += msg + "\n";
         }
+
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(ScrollToBottom());
+        }
+    }
+
+    private System.Collections.IEnumerator ScrollToBottom()
+    {
+        yield return new WaitForEndOfFrame();
+
+        if (logScrollRect != null)
+        {
+            logScrollRect.verticalNormalizedPosition = 0f;
+        }
     }
 
     public void OnColorButtonClicked(int index)
@@ -129,9 +178,16 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         SelectCharacterServerRpc(index);
     }
 
+    public void OnDeselectClicked()
+    {
+        DeselectServerRpc();
+    }
+
     [Rpc(SendTo.Server)]
     private void SelectCharacterServerRpc(int index, RpcParams rpcParams = default)
     {
+        if (index < 0 || index >= colorOwners.Length) return;
+
         ulong id = rpcParams.Receive.SenderClientId;
 
         if (colorOwners[index].Value != -1 && colorOwners[index].Value != (long)id) return;
@@ -158,13 +214,8 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         }
     }
 
-    public void OnDeselectClicked()
-    {
-        DeselectServerRpc();
-    }
-
     [Rpc(SendTo.Server)]
-    private void DeselectServerRpc(RpcParams rpcParams = default)
+    public void DeselectServerRpc(RpcParams rpcParams = default)
     {
         ulong id = rpcParams.Receive.SenderClientId;
 
@@ -182,7 +233,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
         }
     }
 
-    private string GetColorName(int i) => i == 0 ? "Verde" : i == 1 ? "Morado" : i == 2 ? "Rojo" : "Amarillo";
+    private string GetColorName(int i) => i == 0 ? "Amarillo" : i == 1 ? "Rojo" : i == 2 ? "Morado" : "Verde";
 
     public void OnStartGameClicked()
     {

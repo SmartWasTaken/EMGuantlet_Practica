@@ -101,7 +101,7 @@ public class GameManager : NetworkBehaviour
         {
             playerSelections.Remove(clientId);
             playerNames.Remove(clientId);
-            CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUi();
+            CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUI();
         }
 
         if (clientId == NetworkManager.Singleton.LocalClientId)
@@ -135,14 +135,14 @@ public class GameManager : NetworkBehaviour
     {
         if (!IsServer) return;
         playerSelections[clientId] = characterIndex;
-        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUi();
+        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUI();
     }
 
     public void RemovePlayerSelection(ulong clientId)
     {
         if (!IsServer) return;
         playerSelections.Remove(clientId);
-        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUi();
+        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUI();
     }
 
     public int GetPlayerSelection(ulong clientId) => playerSelections.ContainsKey(clientId) ? playerSelections[clientId] : -1;
