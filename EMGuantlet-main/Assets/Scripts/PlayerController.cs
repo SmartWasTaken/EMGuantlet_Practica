@@ -125,22 +125,22 @@ public class PlayerController : CharController
     }
 
     /// <summary>
-    /// Aplica un conjunto de estadísticas de personaje y recarga sus valores activos.
+    /// Aplica las estadísticas que el Servidor ha ordenado.
     /// </summary>
     public void ApplyCharacterStats(PlayerStats newStats)
     {
-        if (newStats == null)
-        {
-            Debug.LogWarning("[PlayerController] ApplyCharacterStats llamado con null");
-            return;
-        }
+        if (newStats == null) return;
 
         stats = newStats;
 
-        // Recargar todas las stats
-        LoadStats();
+        PlayerStats pStats = stats as PlayerStats;
+        if (pStats != null && pStats.animatorController != null)
+        {
+            animator.runtimeAnimatorController = pStats.animatorController;
+        }
 
-        Debug.Log($"[PlayerController] Stats aplicadas: {newStats.characterName}");
+        LoadStats();
+        Debug.Log($"[PlayerController] Red aplicó personaje: {newStats.characterName}");
     }
 
     /// <summary>
@@ -148,18 +148,18 @@ public class PlayerController : CharController
     /// </summary>
     protected override void LoadStats()
     {
-        // ✅ PRIMERO: Intenta cargar desde GameManager (personaje seleccionado)
-        if (GameManager.Instance != null && GameManager.Instance.SelectedCharacterStats != null)
-        {
-            stats = GameManager.Instance.SelectedCharacterStats;
-            Debug.Log($"[PlayerController] Cargando personaje seleccionado: {stats.characterName}");
-        }
-
-        // Si no hay personaje seleccionado, usa el asignado en el prefab (fallback)
-        if (stats == null)
-        {
-            Debug.LogWarning("[PlayerController] No hay personaje seleccionado, usando stats por defecto del prefab");
-        }
+        //// ✅ PRIMERO: Intenta cargar desde GameManager (personaje seleccionado)
+        //if (GameManager.Instance != null && GameManager.Instance.SelectedCharacterStats != null)
+        //{
+        //    stats = GameManager.Instance.SelectedCharacterStats;
+        //    Debug.Log($"[PlayerController] Cargando personaje seleccionado: {stats.characterName}");
+        //}
+        //
+        //// Si no hay personaje seleccionado, usa el asignado en el prefab (fallback)
+        //if (stats == null)
+        //{
+        //    Debug.LogWarning("[PlayerController] No hay personaje seleccionado, usando stats por defecto del prefab");
+        //}
 
         base.LoadStats();
 
@@ -219,11 +219,7 @@ public class PlayerController : CharController
     {
         if (GameManager.Instance != null && GameManager.Instance.allCharacters.Length > characterIndex)
         {
-            PlayerStats statsToApply = GameManager.Instance.allCharacters[characterIndex];
-            ApplyCharacterStats(statsToApply);
-
-            if (statsToApply.animatorController != null)
-                GetComponent<Animator>().runtimeAnimatorController = statsToApply.animatorController;
+            ApplyCharacterStats(GameManager.Instance.allCharacters[characterIndex]);
         }
     }
 }
