@@ -29,6 +29,7 @@ public class GameManager : NetworkBehaviour
     private PlayerGameState playerState;
 
     private Dictionary<ulong, int> playerSelections = new Dictionary<ulong, int>();
+    private Dictionary<ulong, string> playerNames = new Dictionary<ulong, string>();
 
     [Header("Base de Datos de Personajes")]
     [SerializeField] public PlayerStats[] allCharacters;
@@ -38,17 +39,9 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-
-        playerState = new PlayerGameState("PLAYER_1");
-        SceneManager.sceneUnloaded += onSceneUnloaded;
     }
 
     /// <summary>
@@ -106,11 +99,9 @@ public class GameManager : NetworkBehaviour
     {
         if (IsServer)
         {
-            if (playerSelections.ContainsKey(clientId))
-            {
-                playerSelections.Remove(clientId);
-                Debug.Log($"[GameManager] Cliente {clientId} desconectado. Datos eliminados del registro.");
-            }
+            playerSelections.Remove(clientId);
+            playerNames.Remove(clientId);
+            CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUi();
         }
 
         if (clientId == NetworkManager.Singleton.LocalClientId)
@@ -121,17 +112,40 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    [Rpc(SendTo.Server)]
+    public void RegisterPlayerServerRpc(string name, RpcParams rpcParams = default)
+    {
+        ulong id = rpcParams.Receive.SenderClientId;
+
+        // Si el nombre está vacío o es "Jugador X", asignamos uno oficial
+        if (string.IsNullOrEmpty(name) || name.StartsWith("Jugador"))
+        {
+            name = "Jugador " + (playerNames.Count + 1);
+        }
+
+        playerNames[id] = name;
+        CharSelectionMenuButtonsHandler.Instance?.AddLogMessageClientRpc($"{name} se ha unido a la sala.", -1);
+    }
+
+    public string GetPlayerName(ulong id) => playerNames.ContainsKey(id) ? playerNames[id] : "Desconocido";
+
+    public bool IsColorTaken(int index) => playerSelections.ContainsValue(index);
+
     public void StorePlayerSelection(ulong clientId, int characterIndex)
     {
         if (!IsServer) return;
         playerSelections[clientId] = characterIndex;
+        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUi();
     }
 
-    public int GetPlayerSelection(ulong clientId)
+    public void RemovePlayerSelection(ulong clientId)
     {
-        if (playerSelections.ContainsKey(clientId)) return playerSelections[clientId];
-        return 0;
+        if (!IsServer) return;
+        playerSelections.Remove(clientId);
+        CharSelectionMenuButtonsHandler.Instance?.RefreshLobbyUi();
     }
+
+    public int GetPlayerSelection(ulong clientId) => playerSelections.ContainsKey(clientId) ? playerSelections[clientId] : -1;
 
     /// <summary>
     /// Registra el jugador local activo y publica su evento de registro.

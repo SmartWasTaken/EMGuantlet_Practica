@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Unity.Netcode;
-
+using Unity.Netcode.Transports.UTP; // Necesario para inyectar la IP
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -12,69 +12,96 @@ using UnityEditor;
 
 public class MainMenuButtonsHandler : MonoBehaviour
 {
-    [Header("Map Configs disponibles")]
-    [SerializeField] private MapConfig[] availableMaps;
+    [Header("Paneles UI")]
+    [SerializeField] private GameObject mainPanel;
+    [SerializeField] private GameObject clientIpPanel;
 
-    [Header("UI")]
-    [SerializeField] private TMP_Dropdown mapsDropdown;
+    [Header("Campos de Texto")]
+    [SerializeField] private TMP_InputField playerNameInput;
+    [SerializeField] private TMP_InputField ipAddressInput;
 
+    [Header("Botones")]
     [SerializeField] private Button buttonHost;
     [SerializeField] private Button buttonClient;
+    [SerializeField] private Button buttonConnectClient;
+    [SerializeField] private Button buttonCancelClient;
+    [SerializeField] private Button buttonOptions;
+    [SerializeField] private Button buttonExit;
+
+    // Variable estática para llevar el nombre a la siguiente escena
+    public static string LocalPlayerName { get; private set; } = "";
 
     private void Awake()
     {
-        buttonHost.onClick.AddListener(() => {
-            NetworkManager.Singleton.StartHost();
-            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
-        });
+        // Asignación limpia de listeners mediante código
+        if (buttonHost != null) buttonHost.onClick.AddListener(OnHostButtonClicked);
+        if (buttonClient != null) buttonClient.onClick.AddListener(OnClientButtonClicked);
+        if (buttonConnectClient != null) buttonConnectClient.onClick.AddListener(OnConnectClientClicked);
+        if (buttonCancelClient != null) buttonCancelClient.onClick.AddListener(OnCancelClientClicked);
 
-        buttonClient.onClick.AddListener(() => {
-            NetworkManager.Singleton.StartClient();
-        });
+        // Mantengo tus botones originales de opciones y salir
+        if (buttonOptions != null) buttonOptions.onClick.AddListener(OnOptionsButtonClicked);
+        if (buttonExit != null) buttonExit.onClick.AddListener(OnExitButtonClicked);
     }
 
-    /// <summary>
-    /// Inicializa el dropdown de mapas al cargar el menú principal.
-    /// </summary>
     private void Start()
     {
-        initializeMapDropdown();
+        // Estado inicial de los paneles
+        if (mainPanel != null) mainPanel.SetActive(true);
+        if (clientIpPanel != null) clientIpPanel.SetActive(false);
+
+        if (ipAddressInput != null) ipAddressInput.text = "127.0.0.1";
     }
 
-    /// <summary>
-    /// Libera la suscripción del dropdown al destruir el objeto.
-    /// </summary>
-    private void OnDestroy()
+    private void OnHostButtonClicked()
     {
-        if (mapsDropdown != null)
-            mapsDropdown.onValueChanged.RemoveListener(onMapDropdownChanged);
+        SavePlayerName();
+        NetworkManager.Singleton.StartHost();
+        NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
     }
 
-    /// <summary>
-    /// Navega a la escena de selección de personaje si hay mapa seleccionado.
-    /// </summary>
-    public void OnButtonPlayClicked()
+    private void OnClientButtonClicked()
     {
-        if (GameManager.Instance?.SelectedMapConfig == null)
+        if (mainPanel != null) mainPanel.SetActive(false);
+        if (clientIpPanel != null) clientIpPanel.SetActive(true);
+    }
+
+    private void OnConnectClientClicked()
+    {
+        SavePlayerName();
+
+        string ipAddress = ipAddressInput != null ? ipAddressInput.text : "127.0.0.1";
+        if (string.IsNullOrEmpty(ipAddress)) ipAddress = "127.0.0.1";
+
+        // Inyectamos la IP al componente Unity Transport
+        UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        if (transport != null)
         {
-            Debug.LogWarning("[MainMenu] No hay mapa seleccionado.");
-            return;
+            transport.SetConnectionData(ipAddress, 7777);
         }
 
-        SceneManager.LoadScene(SceneNames.CharSelection);
+        NetworkManager.Singleton.StartClient();
     }
 
-    /// <summary>
-    /// Registra la acción del botón de opciones del menú principal.
-    /// </summary>
+    private void OnCancelClientClicked()
+    {
+        if (mainPanel != null) mainPanel.SetActive(true);
+        if (clientIpPanel != null) clientIpPanel.SetActive(false);
+    }
+
+    private void SavePlayerName()
+    {
+        if (playerNameInput != null)
+        {
+            LocalPlayerName = playerNameInput.text.Trim();
+        }
+    }
+
     public void OnOptionsButtonClicked()
     {
         Debug.Log("Options button pressed");
     }
 
-    /// <summary>
-    /// Cierra la aplicación o detiene la ejecución en el editor.
-    /// </summary>
     public void OnExitButtonClicked()
     {
         Debug.Log("Exit button pressed");
@@ -83,52 +110,5 @@ public class MainMenuButtonsHandler : MonoBehaviour
 #else
         Application.Quit();
 #endif
-    }
-
-    /// <summary>
-    /// Configura las opciones del dropdown y establece el mapa inicial seleccionado.
-    /// </summary>
-    private void initializeMapDropdown()
-    {
-        if (mapsDropdown == null || availableMaps == null || availableMaps.Length == 0)
-        {
-            Debug.LogWarning("[MainMenu] Dropdown de mapas no configurado.");
-            return;
-        }
-
-        mapsDropdown.ClearOptions();
-
-        List<TMP_Dropdown.OptionData> options = new List<TMP_Dropdown.OptionData>();
-        foreach (MapConfig map in availableMaps)
-        {
-            options.Add(new TMP_Dropdown.OptionData(map != null ? map.mapName : "Sin nombre"));
-        }
-
-        mapsDropdown.AddOptions(options);
-        mapsDropdown.value = 0;
-        mapsDropdown.RefreshShownValue();
-        mapsDropdown.onValueChanged.AddListener(onMapDropdownChanged);
-
-        applySelectedMap(0);
-    }
-
-    /// <summary>
-    /// Aplica el mapa seleccionado cuando cambia el valor del dropdown.
-    /// </summary>
-    private void onMapDropdownChanged(int index)
-    {
-        applySelectedMap(index);
-    }
-
-    /// <summary>
-    /// Guarda en GameManager el mapa correspondiente al índice indicado.
-    /// </summary>
-    private void applySelectedMap(int index)
-    {
-        if (availableMaps == null || index < 0 || index >= availableMaps.Length) return;
-        if (GameManager.Instance == null) return;
-
-        GameManager.Instance.SelectedMapConfig = availableMaps[index];
-        Debug.Log($"[MainMenu] Mapa seleccionado: {availableMaps[index].mapName}");
     }
 }
