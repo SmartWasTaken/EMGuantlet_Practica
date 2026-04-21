@@ -108,17 +108,16 @@ public class LevelGenerator : NetworkBehaviour
     {
         if (!tryCalculateSpawnPos(out Vector3 baseSpawnPos)) return;
 
-        int playerIndex = 0; // Usamos esto para separarlos
-
+        int playerIndex = 0;
         foreach (ulong clientId in NetworkManager.Singleton.ConnectedClientsIds)
         {
-            // A cada jugador le sumamos 1.5 unidades en el eje X para que nazcan uno al lado del otro
-            Vector3 safeSpawnPos = baseSpawnPos + new Vector3(playerIndex * 1.5f, 0f, 0f);
-
+            Vector3 safeSpawnPos = baseSpawnPos + new Vector3(playerIndex * 2f, 0f, 0f);
             GameObject playerInstance = Instantiate(playerNetworkPrefab, safeSpawnPos, Quaternion.identity);
 
-            playerInstance.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
-            playerInstance.SetActive(true);
+            NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+            netObj.SpawnAsPlayerObject(clientId);
+            int choice = GameManager.Instance.GetPlayerSelection(clientId);
+            playerInstance.GetComponent<PlayerController>().ApplyStatsClientRpc(choice);
 
             playerIndex++;
         }

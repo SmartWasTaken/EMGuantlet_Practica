@@ -15,7 +15,6 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     /// </summary>
     public void OnBackButtonClicked()
     {
-        // 🛡️ REGLA DE RED: Apagar la conexión antes de volver al menú
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.Shutdown();
@@ -43,26 +42,24 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     /// </summary>
     private void selectCharacterAndStartGame(PlayerStats characterStats, int characterIndex)
     {
-        if (characterStats == null)
-        {
-            Debug.LogError("[CharSelection] No se ha asignado PlayerStats para este personaje");
-            return;
-        }
+        if (characterStats == null) return;
 
         if (GameManager.Instance != null)
         {
             GameManager.Instance.SelectedCharacterStats = characterStats;
         }
 
-        SelectCharacterServerRpc(characterIndex);
-
-        if (NetworkManager.Singleton.IsHost)
+        if (NetworkManager.Singleton.IsServer)
         {
+            GameManager.Instance.StorePlayerSelection(NetworkManager.Singleton.LocalClientId, characterIndex);
+            
             Debug.Log("Soy el Host. Iniciando el nivel para todos...");
             NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
         }
         else
         {
+            // El Cliente sí usa el RPC para avisar al servidor
+            SelectCharacterServerRpc(characterIndex);
             Debug.Log("Soy Cliente. Personaje elegido. Esperando a que el Host inicie la partida...");
         }
     }
