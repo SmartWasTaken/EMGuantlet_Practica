@@ -149,7 +149,14 @@ public class GameManager : NetworkBehaviour
 
         if (CharSelectionMenuButtonsHandler.Instance != null)
         {
-            CharSelectionMenuButtonsHandler.Instance.AddLogMessageClientRpc($"{name} se ha unido a la sala.", -1);
+            if (id == NetworkManager.ServerClientId)
+            {
+                CharSelectionMenuButtonsHandler.Instance.AddLogMessageClientRpc($"Servidor creado por {name}", -1);
+            }
+            else
+            {
+                CharSelectionMenuButtonsHandler.Instance.AddLogMessageClientRpc($"{name} se ha unido a la sala.", -1);
+            }
         }
 
         SyncNamesToClients();

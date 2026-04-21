@@ -47,8 +47,8 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 
         GameManager.Instance.RegisterPlayerServerRpc(MainMenuButtonsHandler.LocalPlayerName);
 
-        if (IsHost)
-            AddLogMessageClientRpc("Servidor creado por " + MainMenuButtonsHandler.LocalPlayerName, -1);
+        //if (IsHost)
+        //    AddLogMessageClientRpc("Servidor creado por " + MainMenuButtonsHandler.LocalPlayerName, -1);
 
         if (IsHost && mapsDropdown != null && GameManager.Instance.availableMaps != null)
         {
