@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Netcode;
 
-public class CharSelectionMenuButtonsHandler : MonoBehaviour
+public class CharSelectionMenuButtonsHandler : NetworkBehaviour
 {
     [Header("Character Stats Assets")]
     [SerializeField] private PlayerStats greenCharacterStats;
@@ -14,45 +15,33 @@ public class CharSelectionMenuButtonsHandler : MonoBehaviour
     /// </summary>
     public void OnBackButtonClicked()
     {
+        // 🛡️ REGLA DE RED: Apagar la conexión antes de volver al menú
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
         SceneManager.LoadScene(SceneNames.MainMenu);
     }
 
-    /// <summary>
-    /// Selecciona el personaje verde e inicia la partida.
-    /// </summary>
-    public void OnGreenButtonClicked()
+    public void OnGreenButtonClicked() { selectCharacterAndStartGame(greenCharacterStats, 0); }
+    public void OnPurpleButtonClicked() { selectCharacterAndStartGame(purpleCharacterStats, 1); }
+    public void OnRedButtonClicked() { selectCharacterAndStartGame(redCharacterStats, 2); }
+    public void OnYellowButtonClicked() { selectCharacterAndStartGame(yellowCharacterStats, 3); }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void SelectCharacterServerRpc(int index, ServerRpcParams rpcParams = default)
     {
-        selectCharacterAndStartGame(greenCharacterStats);
+        ulong clientId = rpcParams.Receive.SenderClientId;
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.StorePlayerSelection(clientId, index);
+        }
     }
 
     /// <summary>
-    /// Selecciona el personaje morado e inicia la partida.
+    /// Valida la selección del personaje y delega el inicio de partida.
     /// </summary>
-    public void OnPurpleButtonClicked()
-    {
-        selectCharacterAndStartGame(purpleCharacterStats);
-    }
-
-    /// <summary>
-    /// Selecciona el personaje rojo e inicia la partida.
-    /// </summary>
-    public void OnRedButtonClicked()
-    {
-        selectCharacterAndStartGame(redCharacterStats);
-    }
-
-    /// <summary>
-    /// Selecciona el personaje amarillo e inicia la partida.
-    /// </summary>
-    public void OnYellowButtonClicked()
-    {
-        selectCharacterAndStartGame(yellowCharacterStats);
-    }
-
-    /// <summary>
-    /// Valida la selección del personaje y delega el inicio de partida en GameManager.
-    /// </summary>
-    private void selectCharacterAndStartGame(PlayerStats characterStats)
+    private void selectCharacterAndStartGame(PlayerStats characterStats, int characterIndex)
     {
         if (characterStats == null)
         {
@@ -60,6 +49,21 @@ public class CharSelectionMenuButtonsHandler : MonoBehaviour
             return;
         }
 
-        GameManager.Instance?.StartGame(characterStats);
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SelectedCharacterStats = characterStats;
+        }
+
+        SelectCharacterServerRpc(characterIndex);
+
+        if (NetworkManager.Singleton.IsHost)
+        {
+            Debug.Log("Soy el Host. Iniciando el nivel para todos...");
+            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
+        }
+        else
+        {
+            Debug.Log("Soy Cliente. Personaje elegido. Esperando a que el Host inicie la partida...");
+        }
     }
 }

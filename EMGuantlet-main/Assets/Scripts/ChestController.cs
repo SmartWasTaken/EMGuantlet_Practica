@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Netcode;
 
 [RequireComponent(typeof(UniqueEntity))] // ✅ Requiere UniqueEntity
 public class ChestController : MonoBehaviour
@@ -34,13 +35,14 @@ public class ChestController : MonoBehaviour
     /// </summary>
     private void OnCollisionStay2D(Collision2D collision)
     {
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer) return;
+
         if (collected) return;
         if (!collision.gameObject.CompareTag("Player")) return;
 
         PlayerController player = collision.gameObject.GetComponent<PlayerController>();
         if (player == null) return;
 
-        // ✅ Log con IDs para debugging multiplayer
         Debug.Log($"[{EntityType}:{EntityId}] opened by [Player:{player.EntityId}]");
 
         if (GameManager.Instance != null && GameManager.Instance.TryTriggerVictory(player.EntityId, EntityId))

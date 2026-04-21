@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using Unity.Netcode;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public static class SceneNames
@@ -10,7 +12,7 @@ public static class SceneNames
     public const string VictoryScene = "VictoryScene";
 }
 
-public class GameManager : MonoBehaviour
+public class GameManager : NetworkBehaviour
 {
     public static GameManager Instance { get; private set; }
 
@@ -25,6 +27,11 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float delayBeforeScene = 0.5f;
 
     private PlayerGameState playerState;
+
+    private Dictionary<ulong, int> playerSelections = new Dictionary<ulong, int>();
+
+    [Header("Base de Datos de Personajes")]
+    [SerializeField] public PlayerStats[] allCharacters;
 
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
@@ -66,6 +73,18 @@ public class GameManager : MonoBehaviour
     private void OnDisable()
     {
         GameEvents.OnPlayerDied -= onPlayerDeath;
+    }
+
+    public void StorePlayerSelection(ulong clientId, int characterIndex)
+    {
+        if (!IsServer) return;
+        playerSelections[clientId] = characterIndex;
+    }
+
+    public int GetPlayerSelection(ulong clientId)
+    {
+        if (playerSelections.ContainsKey(clientId)) return playerSelections[clientId];
+        return 0;
     }
 
     /// <summary>
@@ -241,6 +260,3 @@ public class GameManager : MonoBehaviour
         Debug.Log($"[GameManager] Jugador muerto. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
     }
 }
-
-
-

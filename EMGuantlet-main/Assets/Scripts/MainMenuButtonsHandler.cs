@@ -2,6 +2,10 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using Unity.Netcode;
+
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -13,6 +17,21 @@ public class MainMenuButtonsHandler : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] private TMP_Dropdown mapsDropdown;
+
+    [SerializeField] private Button buttonHost;
+    [SerializeField] private Button buttonClient;
+
+    private void Awake()
+    {
+        buttonHost.onClick.AddListener(() => {
+            NetworkManager.Singleton.StartHost();
+            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
+        });
+
+        buttonClient.onClick.AddListener(() => {
+            NetworkManager.Singleton.StartClient();
+        });
+    }
 
     /// <summary>
     /// Inicializa el dropdown de mapas al cargar el menú principal.

@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 using UnityEngine.Tilemaps;
 
 [System.Serializable]
@@ -26,12 +27,16 @@ public class RingSettings
     public float decorativeElementPercentage = 0.05f;
 }
 
-public class LevelGenerator : MonoBehaviour
+public class LevelGenerator : NetworkBehaviour
 {
     [SerializeField] private TilemapFiller tilemapFiller;
 
     [Header("Configuración por defecto (fallback sin selección de menú)")]
     [SerializeField] private MapConfig defaultMapConfig;
+
+    [Header("Multijugador")]
+    [SerializeField] private GameObject playerNetworkPrefab;
+    private NetworkVariable<int> mapSeed = new NetworkVariable<int>();
 
     [Header("Sala del tesoro (prefabs)")]
     [SerializeField] private GameObject treasurePrefab;
@@ -75,16 +80,48 @@ public class LevelGenerator : MonoBehaviour
     /// <summary>
     /// Garantiza la configuración de mapa activa y ejecuta la generación inicial del nivel.
     /// </summary>
-    private void Start()
+    public override void OnNetworkSpawn()
     {
-        if (GameManager.Instance != null && GameManager.Instance.SelectedMapConfig == null)
+        if (IsServer)
         {
-            GameManager.Instance.SelectedMapConfig = defaultMapConfig;
-            Debug.Log("[LevelGenerator] Usando MapConfig por defecto.");
+            if (GameManager.Instance != null && GameManager.Instance.SelectedMapConfig == null)
+            {
+                GameManager.Instance.SelectedMapConfig = defaultMapConfig;
+            }
+            mapSeed.Value = Random.Range(0, 1000000);
+            generateMapWithSeed(mapSeed.Value);
+            spawnNetworkPlayers();
         }
+        else
+        {
+            generateMapWithSeed(mapSeed.Value);
+        }
+    }
 
+    private void generateMapWithSeed(int seed)
+    {
+        Random.InitState(seed);
         generateLevel();
-        preparePlayerSpawn();
+    }
+
+    private void spawnNetworkPlayers()
+    {
+        if (!tryCalculateSpawnPos(out Vector3 baseSpawnPos)) return;
+
+        int playerIndex = 0; // Usamos esto para separarlos
+
+        foreach (ulong clientId in NetworkManager.Singleton.ConnectedClientsIds)
+        {
+            // A cada jugador le sumamos 1.5 unidades en el eje X para que nazcan uno al lado del otro
+            Vector3 safeSpawnPos = baseSpawnPos + new Vector3(playerIndex * 1.5f, 0f, 0f);
+
+            GameObject playerInstance = Instantiate(playerNetworkPrefab, safeSpawnPos, Quaternion.identity);
+
+            playerInstance.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
+            playerInstance.SetActive(true);
+
+            playerIndex++;
+        }
     }
 
     /// <summary>

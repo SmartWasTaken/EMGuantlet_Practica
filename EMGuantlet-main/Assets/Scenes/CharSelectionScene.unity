@@ -663,6 +663,7 @@ GameObject:
   - component: {fileID: 689020188}
   - component: {fileID: 689020187}
   - component: {fileID: 689020186}
+  - component: {fileID: 689020191}
   - component: {fileID: 689020190}
   m_Layer: 5
   m_Name: Canvas
@@ -770,10 +771,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f5f5eb66163c7cc40b56f46e66d513a8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
   greenCharacterStats: {fileID: 11400000, guid: ff37192e7cfcb0349ad1d099d2f93b2f, type: 2}
   purpleCharacterStats: {fileID: 11400000, guid: 4cc605f5cab4b0f4f9e9d3abd7a8a52d, type: 2}
   redCharacterStats: {fileID: 11400000, guid: bab4382f0707bdf4fb1b65d0014d1dc6, type: 2}
   yellowCharacterStats: {fileID: 11400000, guid: 010a2fba8cd64a546ad9b0618ce3a0fe, type: 2}
+--- !u!114 &689020191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 689020185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 2945849560
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1 &700186103
 GameObject:
   m_ObjectHideFlags: 0

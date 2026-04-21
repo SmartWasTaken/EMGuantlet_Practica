@@ -1,4 +1,5 @@
 using UnityEngine;
+using Unity.Netcode;
 
 /// <summary>
 /// Proporciona un identificador único y un tipo a cada entidad del juego.
@@ -17,7 +18,20 @@ public class UniqueEntity : MonoBehaviour
     /// <summary>
     /// Obtiene el identificador único de la entidad.
     /// </summary>
-    public string EntityId => entityId;
+    public string EntityId
+    {
+        get
+        {
+            // Si el objeto está en la red, usamos el ID oficial de Netcode
+            NetworkObject netObj = GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                return netObj.NetworkObjectId.ToString();
+            }
+
+            return entityId;
+        }
+    }
 
     /// <summary>
     /// Obtiene el tipo de la entidad.

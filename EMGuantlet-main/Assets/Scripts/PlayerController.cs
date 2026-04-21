@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerController : CharController
@@ -17,39 +18,58 @@ public class PlayerController : CharController
     protected override void Awake()
     {
         base.Awake();
-        controls = new PlayerControls();
+    }
 
-        controls.Player.Move.performed += ctx => movement = ctx.ReadValue<Vector2>();
-        controls.Player.Move.canceled += _ => movement = Vector2.zero;
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
 
-        // ✅ Ocultar hasta que LevelGenerator lo reposicione
-        gameObject.SetActive(false);
+        // Si este clon es mío, enciendo MI mando y aviso a MI cámara
+        if (IsOwner)
+        {
+            controls = new PlayerControls();
+            controls.Player.Move.performed += ctx => movement = ctx.ReadValue<Vector2>();
+            controls.Player.Move.canceled += _ => movement = Vector2.zero;
+            controls.Player.Attack.performed += onAttack;
+            controls.Enable();
 
-        UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
-        if (GameManager.Instance != null)
-            GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
+            UniqueEntity uniqueEntity = GetComponent<UniqueEntity>();
+            if (GameManager.Instance != null)
+                GameManager.Instance.RegisterLocalPlayer(this, uniqueEntity);
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner && controls != null)
+        {
+            controls.Player.Attack.performed -= onAttack;
+            controls.Disable();
+        }
     }
 
     /// <summary>
     /// Inicializa estado del jugador y notifica los valores iniciales al HUD.
     /// </summary>
-    protected override void Start()
-    {
-        base.Start();
-
-        // Dispara eventos iniciales para actualizar el HUD
-        GameEvents.HealthChanged(health);
-        GameEvents.KeysChanged();
-        GameEvents.DiamondsChanged();
-
-        IsAttacking = false;
-    }
+    //protected override void Start()
+    //{
+    //    base.Start();
+    //
+    //    // Dispara eventos iniciales para actualizar el HUD
+    //    GameEvents.HealthChanged(health);
+    //    GameEvents.KeysChanged();
+    //    GameEvents.DiamondsChanged();
+    //
+    //    IsAttacking = false;
+    //}
 
     /// <summary>
     /// Actualiza animación, orientación y estado de vida en cada frame.
     /// </summary>
     protected override void Update()
     {
+        if (!IsOwner) return; //Solo muevo yo MI personaje, no el de mi compañero
+
         animator.SetFloat("speed", movement.sqrMagnitude);
 
         if (movement.sqrMagnitude > 0.01f)
@@ -64,20 +84,20 @@ public class PlayerController : CharController
     /// <summary>
     /// Activa el mapa de controles y suscribe la acción de ataque.
     /// </summary>
-    private void OnEnable()
-    {
-        controls.Enable();
-        controls.Player.Attack.performed += onAttack;
-    }
-
-    /// <summary>
-    /// Desuscribe la acción de ataque y desactiva el mapa de controles.
-    /// </summary>
-    private void OnDisable()
-    {
-        controls.Player.Attack.performed -= onAttack;
-        controls.Disable();
-    }
+    //private void OnEnable()
+    //{
+    //    controls.Enable();
+    //    controls.Player.Attack.performed += onAttack;
+    //}
+    //
+    ///// <summary>
+    ///// Desuscribe la acción de ataque y desactiva el mapa de controles.
+    ///// </summary>
+    //private void OnDisable()
+    //{
+    //    controls.Player.Attack.performed -= onAttack;
+    //    controls.Disable();
+    //}
 
     /// <summary>
     /// Gestiona la muerte del jugador y lanza el flujo de fin de partida.
@@ -192,5 +212,18 @@ public class PlayerController : CharController
     private void endAttack()
     {
         IsAttacking = false;
+    }
+
+    [ClientRpc]
+    public void ApplyStatsClientRpc(int characterIndex)
+    {
+        if (GameManager.Instance != null && GameManager.Instance.allCharacters.Length > characterIndex)
+        {
+            PlayerStats statsToApply = GameManager.Instance.allCharacters[characterIndex];
+            ApplyCharacterStats(statsToApply);
+
+            if (statsToApply.animatorController != null)
+                GetComponent<Animator>().runtimeAnimatorController = statsToApply.animatorController;
+        }
     }
 }
