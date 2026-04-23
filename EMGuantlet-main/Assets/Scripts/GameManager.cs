@@ -389,7 +389,8 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryTriggerVictory(string playerEntityId, string chestEntityId)
     {
-        if (playerState == null) return false;
+        if (!IsServer) return false;
+
         victoryAchieved();
         return true;
     }

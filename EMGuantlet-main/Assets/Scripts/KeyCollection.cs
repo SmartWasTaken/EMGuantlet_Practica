@@ -27,11 +27,11 @@ public class KeyCollection : NetworkBehaviour
     /// <summary>
     /// Detecta la colisión con el jugador e intenta recoger la llave.
     /// </summary>
-    private void OnCollisionEnter2D(Collision2D collision)
+    private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!collision.gameObject.CompareTag(playerTag)) return;
+        if (!other.CompareTag(playerTag)) return;
 
-        PlayerController player = collision.gameObject.GetComponent<PlayerController>();
+        PlayerController player = other.GetComponent<PlayerController>();
         if (player == null) return;
 
         if (player.IsOwner)
