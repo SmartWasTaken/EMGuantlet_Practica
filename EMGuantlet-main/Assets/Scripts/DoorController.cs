@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Unity.Netcode;
 
 [RequireComponent(typeof(UniqueEntity))]
 public class DoorController : MonoBehaviour
@@ -35,11 +36,13 @@ public class DoorController : MonoBehaviour
     /// </summary>
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer) return;
+
         if (isOpen || !other.CompareTag("Player")) return;
         if (!other.TryGetComponent(out PlayerController player)) return;
         if (GameManager.Instance == null) return;
 
-        if (GameManager.Instance.TryOpenDoor(player.EntityId, EntityId))
+        if (GameManager.Instance.TryOpenDoor(player.EntityId, EntityId, transform.position))
         {
             OpenDoor(player);
         }
@@ -53,6 +56,13 @@ public class DoorController : MonoBehaviour
         isOpen = true;
 
         Debug.Log($"[{EntityType}:{EntityId}] opened by [Player:{player.EntityId}]");
+
+        ApplyOpenVisuals();
+    }
+
+    public void ApplyOpenVisuals()
+    {
+        isOpen = true;
 
         if (openDoorSprite != null && spriteRenderer != null)
         {

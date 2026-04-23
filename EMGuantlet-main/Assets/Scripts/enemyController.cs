@@ -68,10 +68,11 @@ public abstract class EnemyController : CharController
     {
         base.Die();
 
-        if (GameManager.Instance != null)
+        // ✅ Solo el servidor suma al contador y suelta los objetos
+        if (IsServer && GameManager.Instance != null)
             GameManager.Instance.AddEnemyKill();
 
-        spawnDrops();
+        if (IsServer) spawnDrops();
     }
 
     /// <summary>
@@ -83,6 +84,14 @@ public abstract class EnemyController : CharController
         {
             Die();
             StartCoroutine(DespawnAfterAnimation());
+        }
+    }
+
+    protected override void CheckDeathFromClient()
+    {
+        if (health <= 0 && !isDead)
+        {
+            Die(); // Ejecuta la animación del Animator
         }
     }
 
@@ -100,12 +109,8 @@ public abstract class EnemyController : CharController
     /// <summary>
     /// Genera los drops del enemigo usando la configuración activa del mapa.
     /// </summary>
-    /// <summary>
-    /// Genera los drops del enemigo usando la configuración activa del mapa.
-    /// </summary>
     protected virtual void spawnDrops()
     {
-        // ✅ PROTECCIÓN: Aseguramos que solo el Servidor pueda generar drops
         if (!IsServer) return;
 
         if (dropPrefabs == null || dropPrefabs.Length == 0)

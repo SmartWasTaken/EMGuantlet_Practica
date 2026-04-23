@@ -198,7 +198,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e709e8c592b185246987426fca7d6582, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
   openDoorSprite: {fileID: 21300000, guid: f2132117d60aefb4b84d4ea62630a602, type: 3}
+  netIsOpen:
+    m_InternalValue: 0
 --- !u!114 &2275920651059486469
 MonoBehaviour:
   m_ObjectHideFlags: 0

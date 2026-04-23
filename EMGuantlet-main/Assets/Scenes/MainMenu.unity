@@ -3335,6 +3335,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ShowTopMostFoldoutHeaderGroup: 1
+  netEnemiesKilled:
+    m_InternalValue: 0
   networkedMapIndex:
     m_InternalValue: 0
   networkedMapSeed:

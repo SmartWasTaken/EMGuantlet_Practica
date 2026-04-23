@@ -344,7 +344,7 @@ public class GameManager : NetworkBehaviour
     /// <summary>
     /// Intenta abrir una puerta consumiendo una llave del jugador actual.
     /// </summary>
-    public bool TryOpenDoor(string playerEntityId, string doorEntityId)
+    public bool TryOpenDoor(string playerEntityId, string doorEntityId, Vector3 doorPosition = default)
     {
         if (!IsServer) return false;
 
@@ -352,9 +352,27 @@ public class GameManager : NetworkBehaviour
         if (pc != null && pc.netKeys.Value > 0)
         {
             pc.netKeys.Value--;
+
+            OpenDoorClientRpc(doorPosition);
             return true;
         }
         return false;
+    }
+
+    [ClientRpc]
+    private void OpenDoorClientRpc(Vector3 doorPosition)
+    {
+        if (IsServer) return;
+
+        DoorController[] doors = FindObjectsByType<DoorController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (DoorController d in doors)
+        {
+            if (Vector3.Distance(d.transform.position, doorPosition) < 0.1f)
+            {
+                d.ApplyOpenVisuals();
+                break;
+            }
+        }
     }
 
     private PlayerController getPlayerControllerById(string entityId)

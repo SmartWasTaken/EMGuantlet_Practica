@@ -2,28 +2,24 @@
 using UnityEngine.SceneManagement;
 using Unity.Netcode;
 
-[RequireComponent(typeof(UniqueEntity))] // ✅ Requiere UniqueEntity
-public class ChestController : MonoBehaviour
+[RequireComponent(typeof(UniqueEntity))]
+public class ChestController : NetworkBehaviour
 {
 
     private bool collected = false;
-    
-    // ✅ Nueva variable para UniqueEntity
+
     private UniqueEntity uniqueEntity;
-    
-    // ✅ Propiedades de acceso rápido
+
     public string EntityId => uniqueEntity?.EntityId ?? "UNKNOWN";
     public EntityType EntityType => uniqueEntity?.Type ?? EntityType.Interactive_Chest;
-    
+
     /// <summary>
     /// Inicializa la referencia de entidad única y valida su tipo configurado.
     /// </summary>
     private void Awake()
     {
-        // ✅ Obtener UniqueEntity
         uniqueEntity = GetComponent<UniqueEntity>();
-        
-        // Validación del tipo correcto
+
         if (uniqueEntity != null && uniqueEntity.Type != EntityType.Interactive_Chest)
         {
             Debug.LogWarning($"[ChestController] {gameObject.name} tiene tipo {uniqueEntity.Type} en lugar de Interactive_Chest");
@@ -33,9 +29,9 @@ public class ChestController : MonoBehaviour
     /// <summary>
     /// Detecta la interacción con el jugador e intenta activar la victoria una sola vez.
     /// </summary>
-    private void OnCollisionStay2D(Collision2D collision)
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer) return;
+        if (!IsServer) return;
 
         if (collected) return;
         if (!collision.gameObject.CompareTag("Player")) return;
@@ -50,6 +46,5 @@ public class ChestController : MonoBehaviour
             collected = true;
         }
     }
-
 
 }
