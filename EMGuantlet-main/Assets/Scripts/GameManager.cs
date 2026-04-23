@@ -55,6 +55,10 @@ public class GameManager : NetworkBehaviour
     [Header("Base de Datos de Mapas")]
     [SerializeField] public MapConfig[] availableMaps;
 
+    private bool isVictory = false;
+    private int finalKeys = 0;
+    private int finalDiamonds = 0;
+
     /// <summary>
     /// Inicializa el singleton del juego y sus datos persistentes.
     /// </summary>
@@ -131,6 +135,8 @@ public class GameManager : NetworkBehaviour
                 CharSelectionMenuButtonsHandler.Instance.RefreshLobbyUI();
             }
         }
+
+        if (isVictory) return;
 
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
@@ -276,6 +282,7 @@ public class GameManager : NetworkBehaviour
     public void ResetGameData()
     {
         playerState?.ResetState();
+        isVictory = false; // ✅ Reiniciamos la bandera de victoria
 
         if (IsServer) netEnemiesKilled.Value = 0;
     }
@@ -296,6 +303,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetKeys()
     {
+        if (isVictory) return finalKeys;
         if (LocalPlayerController != null) return LocalPlayerController.netKeys.Value;
         return playerState?.Keys ?? 0;
     }
@@ -305,6 +313,8 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetDiamonds()
     {
+        // ✅ CORRECCIÓN: Si ya hemos ganado, devolvemos el valor congelado
+        if (isVictory) return finalDiamonds;
         if (LocalPlayerController != null) return LocalPlayerController.netDiamonds.Value;
         return playerState?.Diamonds ?? 0;
     }
@@ -391,6 +401,8 @@ public class GameManager : NetworkBehaviour
     {
         if (!IsServer) return false;
 
+        if (isVictory) return false;
+
         victoryAchieved();
         return true;
     }
@@ -466,7 +478,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void victoryAchieved()
     {
-        Debug.Log($"[GameManager] Victoria. Keys: {GetKeys()}, Diamonds: {GetDiamonds()}, Enemies: {EnemiesKilled}");
+        Debug.Log($"[GameManager] Victoria disparada en el Servidor.");
         Invoke(nameof(loadVictoryScene), delayBeforeScene);
     }
 
@@ -477,8 +489,24 @@ public class GameManager : NetworkBehaviour
     {
         if (IsServer)
         {
-            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.VictoryScene, LoadSceneMode.Single);
+            TriggerVictoryClientRpc();
         }
+    }
+
+    [ClientRpc]
+    private void TriggerVictoryClientRpc()
+    {
+        // 1. Congelamos los datos. Así, aunque se destruya el PlayerController al cambiar de escena,
+        // la pantalla de victoria podrá seguir leyendo nuestros puntos.
+        finalKeys = GetKeys();
+        finalDiamonds = GetDiamonds();
+        isVictory = true;
+
+        Debug.Log($"[GameManager] Cargando Victoria localmente... Keys: {finalKeys}, Diamonds: {finalDiamonds}");
+
+        // 2. Cargamos la escena con el SceneManager clásico de Unity. 
+        // Esto destruye el nivel, pero nos asegura que la pantalla de victoria se verá al 100%.
+        SceneManager.LoadScene(SceneNames.VictoryScene, LoadSceneMode.Single);
     }
 
     /// <summary>

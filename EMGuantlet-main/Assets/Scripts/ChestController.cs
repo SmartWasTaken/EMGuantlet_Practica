@@ -1,11 +1,9 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 using Unity.Netcode;
 
 [RequireComponent(typeof(UniqueEntity))]
-public class ChestController : NetworkBehaviour
+public class ChestController : MonoBehaviour
 {
-
     private bool collected = false;
 
     private UniqueEntity uniqueEntity;
@@ -31,7 +29,7 @@ public class ChestController : NetworkBehaviour
     /// </summary>
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (!IsServer) return;
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer) return;
 
         if (collected) return;
         if (!collision.gameObject.CompareTag("Player")) return;
@@ -46,5 +44,4 @@ public class ChestController : NetworkBehaviour
             collected = true;
         }
     }
-
 }
