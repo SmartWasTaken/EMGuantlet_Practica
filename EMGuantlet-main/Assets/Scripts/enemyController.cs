@@ -18,12 +18,14 @@ public abstract class EnemyController : CharController
     /// </summary>
     protected virtual void OnCollisionStay2D(Collision2D collision)
     {
+        if (!IsServer) return;
+
         if (!collision.gameObject.CompareTag("Player")) return;
 
         PlayerController player = collision.gameObject.GetComponent<PlayerController>();
         if (player == null) return;
 
-        if (player.IsAttacking)
+        if (player.IsAttacking || player.netIsAttacking.Value)
         {
             TakeDamage(player.DamageToEnemy, (transform.position - player.transform.position).normalized);
             checkDeath();
@@ -79,8 +81,19 @@ public abstract class EnemyController : CharController
         if (health <= 0)
         {
             Die();
-            Destroy(gameObject, 1.2f);
+            StartCoroutine(DespawnAfterAnimation());
         }
+    }
+
+    private System.Collections.IEnumerator DespawnAfterAnimation()
+    {
+        yield return new WaitForSeconds(1.2f);
+
+        var netObj = GetComponent<Unity.Netcode.NetworkObject>();
+        if (netObj != null && netObj.IsSpawned && IsServer)
+            netObj.Despawn();
+        else if (netObj == null)
+            Destroy(gameObject);
     }
 
     /// <summary>

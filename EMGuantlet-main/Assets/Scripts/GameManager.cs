@@ -20,7 +20,10 @@ public class GameManager : NetworkBehaviour
     public Transform LocalPlayerTransform => LocalPlayerController != null ? LocalPlayerController.transform : null;
     public UniqueEntity LocalPlayerEntity { get; private set; }
 
-    public int EnemiesKilled { get; private set; }
+    public int EnemiesKilled => netEnemiesKilled.Value;
+
+    public NetworkVariable<int> netEnemiesKilled = new NetworkVariable<int>(0);
+
     public PlayerStats SelectedCharacterStats { get; set; }
 
     public NetworkVariable<int> networkedMapIndex = new NetworkVariable<int>(0);
@@ -96,6 +99,8 @@ public class GameManager : NetworkBehaviour
         {
             NetworkManager.Singleton.OnClientDisconnectCallback += HandleClientDisconnect;
         }
+
+        netEnemiesKilled.OnValueChanged += (oldVal, newVal) => GameEvents.EnemyKilled(newVal);
     }
 
     /// <summary>
@@ -271,7 +276,8 @@ public class GameManager : NetworkBehaviour
     public void ResetGameData()
     {
         playerState?.ResetState();
-        EnemiesKilled = 0;
+
+        if (IsServer) netEnemiesKilled.Value = 0;
     }
 
     /// <summary>
@@ -279,8 +285,10 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public void AddEnemyKill()
     {
-        EnemiesKilled++;
-        GameEvents.EnemyKilled(EnemiesKilled);
+        if (IsServer)
+        {
+            netEnemiesKilled.Value++;
+        }
     }
 
     /// <summary>
@@ -401,7 +409,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void loadDeadScene()
     {
-        SceneManager.LoadScene(SceneNames.DeadScene);
+        SceneManager.LoadScene(SceneNames.DeadScene, LoadSceneMode.Additive);
     }
 
     /// <summary>
@@ -418,7 +426,10 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     private void loadVictoryScene()
     {
-        SceneManager.LoadScene(SceneNames.VictoryScene);
+        if (IsServer)
+        {
+            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.VictoryScene, LoadSceneMode.Single);
+        }
     }
 
     /// <summary>

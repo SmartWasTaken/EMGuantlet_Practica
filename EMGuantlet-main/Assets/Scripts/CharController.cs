@@ -25,8 +25,15 @@ public abstract class CharController : NetworkBehaviour
     protected Vector2 movement;
     protected Collider2D characterCollider;
 
+    public NetworkVariable<Vector2> netMovement = new NetworkVariable<Vector2>(
+        Vector2.zero,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Owner
+    );
+
     public string EntityId => uniqueEntity?.EntityId ?? "UNKNOWN";
     public EntityType EntityType => uniqueEntity?.Type ?? EntityType.Player;
+    public int CurrentHealth => health;
 
     /// <summary>
     /// Inicializa componentes y carga estadísticas del personaje.
@@ -61,6 +68,8 @@ public abstract class CharController : NetworkBehaviour
     /// </summary>
     protected virtual void FixedUpdate()
     {
+        if (!IsOwner) return;
+
         if (isKnockback)
         {
             knockbackTimer -= Time.fixedDeltaTime;
@@ -107,6 +116,11 @@ public abstract class CharController : NetworkBehaviour
         Debug.Log($"[{EntityType}:{EntityId}] {gameObject.name} took {amount} damage. Health: {health}/{initialHealth}");
 
         TakeKnockback(knockbackDir, knockbackForce);
+
+        if (IsServer)
+        {
+            ReceiveDamageClientRpc(amount, knockbackDir);
+        }
     }
 
     /// <summary>
@@ -158,8 +172,22 @@ public abstract class CharController : NetworkBehaviour
     {
         rb.MovePosition(rb.position + movement.normalized * moveSpeed * Time.fixedDeltaTime);
     }
-}
 
+    [ClientRpc]
+    public void ReceiveDamageClientRpc(int amount, Vector2 knockbackDir)
+    {
+        if (IsServer) return; // El servidor ya procesó el daño arriba, no lo hacemos dos veces
+
+        health -= amount;
+        TakeKnockback(knockbackDir, knockbackForce);
+
+        UpdateHealthUI();
+        CheckDeathFromClient();
+    }
+
+    protected virtual void UpdateHealthUI() { }
+    protected virtual void CheckDeathFromClient() { }
+}
 
 ////////////// TO DO LIST //////////////
 /// 
@@ -169,4 +197,3 @@ public abstract class CharController : NetworkBehaviour
 /// Reordenación de código (métodos y propiedades públicas al final, privados al principio)
 /// Documentación del proyecto (README, diagramas, comentarios en código, etc.)
 /// modificar la generación aleatoria del mapa para que encaje con el modo de semilla (seed) y sea reproducible
-

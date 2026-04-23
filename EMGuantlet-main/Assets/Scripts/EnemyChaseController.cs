@@ -1,4 +1,4 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
 
 public class EnemyChaseController : EnemyController
 {
@@ -12,6 +12,9 @@ public class EnemyChaseController : EnemyController
     private Vector2 wanderDirection;
     private float wanderSpeed;
     private float wanderTimer;
+
+    private float searchTimer = 0f;
+    private const float SEARCH_INTERVAL = 0.25f;
 
     /// <summary>
     /// Inicializa la referencia al jugador y configura el estado inicial de vagabundeo.
@@ -30,7 +33,7 @@ public class EnemyChaseController : EnemyController
     }
 
     /// <summary>
-    /// Libera la suscripciÛn al evento de registro del jugador al destruir el enemigo.
+    /// Libera la suscripci√≥n al evento de registro del jugador al destruir el enemigo.
     /// </summary>
     private void OnDestroy()
     {
@@ -38,7 +41,7 @@ public class EnemyChaseController : EnemyController
     }
 
     /// <summary>
-    /// Carga y aplica las estadÌsticas de persecuciÛn y vagabundeo del enemigo.
+    /// Carga y aplica las estad√≠sticas de persecuci√≥n y vagabundeo del enemigo.
     /// </summary>
     protected override void LoadStats()
     {
@@ -70,8 +73,18 @@ public class EnemyChaseController : EnemyController
     /// </summary>
     protected override void Move()
     {
-        if (isKnockback || playerTransform == null)
+        if (!IsServer) return;
+
+        if (isKnockback)
             return;
+
+        FindClosestPlayer();
+
+        if (playerTransform == null)
+        {
+            wanderMovement();
+            return;
+        }
 
         float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position);
 
@@ -79,6 +92,31 @@ public class EnemyChaseController : EnemyController
             wanderMovement();
         else
             chasePlayer();
+    }
+
+    private void FindClosestPlayer()
+    {
+        searchTimer -= Time.fixedDeltaTime;
+        if (searchTimer > 0f) return;
+
+        searchTimer = SEARCH_INTERVAL;
+
+        float closestDistance = float.MaxValue;
+        Transform closest = null;
+
+        foreach (PlayerController p in PlayerController.ActivePlayers)
+        {
+            if (p != null && p.CurrentHealth > 0)
+            {
+                float dist = Vector2.Distance(transform.position, p.transform.position);
+                if (dist < closestDistance)
+                {
+                    closestDistance = dist;
+                    closest = p.transform;
+                }
+            }
+        }
+        playerTransform = closest;
     }
 
     /// <summary>
@@ -90,7 +128,7 @@ public class EnemyChaseController : EnemyController
     }
 
     /// <summary>
-    /// Mueve al enemigo hacia el jugador y orienta su rotaciÛn en la direcciÛn de avance.
+    /// Mueve al enemigo hacia el jugador y orienta su rotaci√≥n en la direcci√≥n de avance.
     /// </summary>
     private void chasePlayer()
     {
@@ -98,6 +136,9 @@ public class EnemyChaseController : EnemyController
         movement = direction;
 
         rb.linearVelocity = direction * moveSpeed;
+
+        // Inyectamos a la red para animaciones
+        netMovement.Value = direction;
 
         if (direction.sqrMagnitude > 0.01f)
         {
@@ -107,7 +148,7 @@ public class EnemyChaseController : EnemyController
     }
 
     /// <summary>
-    /// Ejecuta el desplazamiento aleatorio del enemigo cuando est· fuera del rango de persecuciÛn.
+    /// Ejecuta el desplazamiento aleatorio del enemigo cuando est√° fuera del rango de persecuci√≥n.
     /// </summary>
     private void wanderMovement()
     {
@@ -118,6 +159,8 @@ public class EnemyChaseController : EnemyController
 
         rb.linearVelocity = wanderDirection * wanderSpeed;
 
+        netMovement.Value = wanderDirection;
+
         if (wanderDirection.sqrMagnitude > 0.01f)
         {
             float angle = Mathf.Atan2(wanderDirection.y, wanderDirection.x) * Mathf.Rad2Deg - 90f;
@@ -126,7 +169,7 @@ public class EnemyChaseController : EnemyController
     }
 
     /// <summary>
-    /// Genera una nueva direcciÛn y velocidad para el movimiento aleatorio del enemigo.
+    /// Genera una nueva direcci√≥n y velocidad para el movimiento aleatorio del enemigo.
     /// </summary>
     private void setNewWanderDirection()
     {

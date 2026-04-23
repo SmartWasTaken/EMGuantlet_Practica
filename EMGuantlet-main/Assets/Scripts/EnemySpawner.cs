@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Unity.Netcode;
 
 [RequireComponent(typeof(UniqueEntity))]
 public class EnemySpawner : MonoBehaviour
@@ -28,6 +29,9 @@ public class EnemySpawner : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer)
+            return;
+
         if (enemyPrefab == null || spawnedCount >= totalEnemies)
             return;
 
@@ -60,5 +64,15 @@ public class EnemySpawner : MonoBehaviour
         UniqueEntity uniqueEntity = enemy.GetComponent<UniqueEntity>();
         if (uniqueEntity != null)
             uniqueEntity.RegenerateIdOnSpawn();
+
+        NetworkObject netObj = enemy.GetComponent<NetworkObject>();
+        if (netObj != null)
+        {
+            netObj.Spawn(true);
+        }
+        else
+        {
+            Debug.LogError($"[EnemySpawner] ¡CUIDADO! El prefab '{enemyPrefab.name}' no tiene el componente NetworkObject.");
+        }
     }
 }

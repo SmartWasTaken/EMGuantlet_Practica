@@ -14,6 +14,10 @@ public class PlayerController : CharController
 
     public NetworkVariable<int> netCharacterIndex = new NetworkVariable<int>(-1);
 
+    public NetworkVariable<bool> netIsAttacking = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+
+    public static System.Collections.Generic.List<PlayerController> ActivePlayers = new System.Collections.Generic.List<PlayerController>();
+
     /// <summary>
     /// Inicializa controles de entrada y registra el jugador local en el gestor global.
     /// </summary>
@@ -26,7 +30,9 @@ public class PlayerController : CharController
     {
         base.OnNetworkSpawn();
 
-        // Si este clon es mío, enciendo MI mando y aviso a MI cámara
+        ActivePlayers.Add(this);
+        netIsAttacking.OnValueChanged += OnNetworkAttackChanged;
+
         if (IsOwner)
         {
             controls = new PlayerControls();
@@ -49,6 +55,9 @@ public class PlayerController : CharController
 
     public override void OnNetworkDespawn()
     {
+        ActivePlayers.Remove(this);
+        netIsAttacking.OnValueChanged -= OnNetworkAttackChanged;
+
         netCharacterIndex.OnValueChanged -= OnCharacterIndexChanged;
         if (IsOwner && controls != null)
         {
@@ -56,6 +65,14 @@ public class PlayerController : CharController
             controls.Disable();
         }
         base.OnNetworkDespawn();
+    }
+
+    private void OnNetworkAttackChanged(bool previousValue, bool newValue)
+    {
+        if (!IsOwner && newValue == true)
+        {
+            animator.SetTrigger("Attack");
+        }
     }
 
     private void OnCharacterIndexChanged(int previousValue, int newValue)
@@ -94,17 +111,21 @@ public class PlayerController : CharController
     /// </summary>
     protected override void Update()
     {
-        if (!IsOwner) return; //Solo muevo yo MI personaje, no el de mi compañero
-
-        animator.SetFloat("speed", movement.sqrMagnitude);
-
-        if (movement.sqrMagnitude > 0.01f)
+        if (IsOwner)
         {
-            float angle = Mathf.Atan2(movement.y, movement.x) * Mathf.Rad2Deg;
-            transform.rotation = Quaternion.Euler(0, 0, angle - 90f);
+            netMovement.Value = movement;
+            checkDeath();
         }
 
-        checkDeath();
+        Vector2 currentMove = netMovement.Value;
+
+        animator.SetFloat("speed", currentMove.sqrMagnitude);
+
+        if (currentMove.sqrMagnitude > 0.01f)
+        {
+            float angle = Mathf.Atan2(currentMove.y, currentMove.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.Euler(0, 0, angle - 90f);
+        }
     }
 
     /// <summary>
@@ -146,8 +167,10 @@ public class PlayerController : CharController
     {
         base.TakeDamage(amount, knockbackDir);
 
-        // Dispara evento de cambio de salud
-        GameEvents.HealthChanged(health);
+        if (IsServer && IsOwner)
+        {
+            GameEvents.HealthChanged(health);
+        }
     }
 
     /// <summary>
@@ -175,12 +198,12 @@ public class PlayerController : CharController
                 GameManager.Instance.SelectedCharacterStats = pStats;
             }
 
-            StartCoroutine(WaitForDataAndInitializeHUD());
+            StartCoroutine(WaitForDataAndInitializeHUD(initialHealth));
         }
     }
 
     //barrera condicional
-    private System.Collections.IEnumerator WaitForDataAndInitializeHUD()
+    private System.Collections.IEnumerator WaitForDataAndInitializeHUD(int currentHealth)
     {
         HeadUpDisplayController hud = null;
 
@@ -202,7 +225,7 @@ public class PlayerController : CharController
         yield return new WaitForSeconds(0.1f);
 
         hud.InitializeHUD();
-        GameEvents.HealthChanged(health);
+        GameEvents.HealthChanged(currentHealth);
         GameEvents.KeysChanged();
         GameEvents.DiamondsChanged();
     }
@@ -212,40 +235,24 @@ public class PlayerController : CharController
     /// </summary>
     protected override void LoadStats()
     {
-        //// ✅ PRIMERO: Intenta cargar desde GameManager (personaje seleccionado)
-        //if (GameManager.Instance != null && GameManager.Instance.SelectedCharacterStats != null)
-        //{
-        //    stats = GameManager.Instance.SelectedCharacterStats;
-        //    Debug.Log($"[PlayerController] Cargando personaje seleccionado: {stats.characterName}");
-        //}
-        //
-        //// Si no hay personaje seleccionado, usa el asignado en el prefab (fallback)
-        //if (stats == null)
-        //{
-        //    Debug.LogWarning("[PlayerController] No hay personaje seleccionado, usando stats por defecto del prefab");
-        //}
 
         base.LoadStats();
 
-        // ✅ Haz casting del campo heredado
         PlayerStats playerStats = stats as PlayerStats;
 
         if (playerStats != null)
         {
-            // Aplica el bonus de velocidad del jugador
             moveSpeed *= playerStats.speedBonus;
-            
-            // Carga stats específicas del jugador
+
             damageToEnemy = playerStats.attackDamage;
             attackCooldown = playerStats.attackCooldown;
         }
         else
         {
-            // Valores por defecto si no hay PlayerStats
             Debug.LogWarning($"[{gameObject.name}] No tiene PlayerStats asignado. Usando valores por defecto.");
             damageToEnemy = 50;
             attackCooldown = 0.5f;
-            moveSpeed *= 1.25f; // Bonus por defecto
+            moveSpeed *= 1.25f;
         }
     }
 
@@ -267,6 +274,9 @@ public class PlayerController : CharController
     {
         animator.SetTrigger("Attack");
         IsAttacking = true;
+
+        if (IsOwner) netIsAttacking.Value = true;
+
         Invoke(nameof(endAttack), attackCooldown);
     }
 
@@ -276,6 +286,8 @@ public class PlayerController : CharController
     private void endAttack()
     {
         IsAttacking = false;
+
+        if (IsOwner) netIsAttacking.Value = false;
     }
 
     [ClientRpc]
@@ -284,6 +296,22 @@ public class PlayerController : CharController
         if (GameManager.Instance != null && GameManager.Instance.allCharacters.Length > characterIndex)
         {
             ApplyCharacterStats(GameManager.Instance.allCharacters[characterIndex]);
+        }
+    }
+
+    protected override void UpdateHealthUI()
+    {
+        if (IsOwner)
+        {
+            GameEvents.HealthChanged(health);
+        }
+    }
+
+    protected override void CheckDeathFromClient()
+    {
+        if (IsOwner)
+        {
+            checkDeath();
         }
     }
 }
