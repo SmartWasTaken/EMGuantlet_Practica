@@ -54,6 +54,9 @@ public class HeadUpDisplayController : MonoBehaviour
 
     private HudBlock activeBlock;
 
+    private bool isSpectating = false;
+    private CameraController cameraController;
+
     /// <summary>
     /// Dejamos el Awake vacío porque en multijugador debemos esperar 
     /// a que la red nos confirme qué personaje somos antes de encender el HUD.
@@ -61,6 +64,11 @@ public class HeadUpDisplayController : MonoBehaviour
     private void Awake()
     {
         // Se ha movido la inicialización a InitializeHUD()
+    }
+
+    private void Start()
+    {
+        cameraController = FindFirstObjectByType<CameraController>();
     }
 
     /// <summary>
@@ -81,6 +89,72 @@ public class HeadUpDisplayController : MonoBehaviour
         GameEvents.OnHealthChanged -= UpdateHearts;
         GameEvents.OnKeysChanged -= UpdateKeys;
         GameEvents.OnDiamondsChanged -= UpdateDiamonds;
+    }
+
+    private void Update()
+    {
+        if (!isSpectating || cameraController == null || cameraController.SpectatedPlayer == null) return;
+
+        PlayerController spectated = cameraController.SpectatedPlayer;
+
+        UpdateHearts(spectated.CurrentHealth);
+
+        int keys = spectated.netKeys.Value;
+        int units = keys % 10;
+        Sprite unitsSprite = getSpriteForDigit(units);
+        if (activeBlock != null && activeBlock.imageKeyUnits != null && activeBlock.imageKeyUnits.sprite != unitsSprite)
+            activeBlock.imageKeyUnits.sprite = unitsSprite;
+
+        int diamonds = spectated.netDiamonds.Value;
+        int hundreds = diamonds / 100;
+        int tens = (diamonds % 100) / 10;
+        int dUnits = diamonds % 10;
+        if (activeBlock != null)
+        {
+            activeBlock.imageDiamondsHundreds.sprite = getSpriteForDigit(hundreds);
+            activeBlock.imageDiamondTens.sprite = getSpriteForDigit(tens);
+            activeBlock.imageDiamondUnits.sprite = getSpriteForDigit(dUnits);
+        }
+
+        if (GameManager.Instance != null)
+        {
+            ulong id = spectated.OwnerClientId;
+            int characterIndex = GameManager.Instance.GetPlayerSelection(id);
+            if (characterIndex >= 0 && characterIndex < GameManager.Instance.allCharacters.Length)
+            {
+                string charName = GameManager.Instance.allCharacters[characterIndex].characterName.ToLowerInvariant();
+                if (charName.Contains("yellow")) activeBlock = findBlockBySlot(HudSlot.Yellow);
+                else if (charName.Contains("red")) activeBlock = findBlockBySlot(HudSlot.Red);
+                else if (charName.Contains("purple")) activeBlock = findBlockBySlot(HudSlot.Purple);
+                else if (charName.Contains("green")) activeBlock = findBlockBySlot(HudSlot.Green);
+
+                refreshBlockVisibility();
+                if (activeBlock != null && activeBlock.textPlayerName != null)
+                {
+                    activeBlock.textPlayerName.text = GameManager.Instance.GetPlayerName(id);
+                }
+            }
+        }
+    }
+
+    public void EnableSpectatorMode()
+    {
+        isSpectating = true;
+    }
+
+    public void DisableSpectatorMode()
+    {
+        isSpectating = false;
+        if (hudBlocks != null)
+        {
+            foreach (var block in hudBlocks)
+            {
+                if (block != null && block.root != null)
+                {
+                    block.root.SetActive(false);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -105,6 +179,11 @@ public class HeadUpDisplayController : MonoBehaviour
     {
         if (activeBlock == null) return;
 
+        if (isSpectating && cameraController != null && cameraController.SpectatedPlayer != null)
+        {
+            hearts = cameraController.SpectatedPlayer.CurrentHealth;
+        }
+
         if (hearts < 0) hearts = 0;
 
         int tens = hearts / 10;
@@ -125,6 +204,8 @@ public class HeadUpDisplayController : MonoBehaviour
     /// </summary>
     public void UpdateKeys()
     {
+        if (isSpectating) return;
+
         if (activeBlock == null) return;
 
         int keys = GameManager.Instance != null ? GameManager.Instance.GetKeys() : 0;
@@ -140,6 +221,8 @@ public class HeadUpDisplayController : MonoBehaviour
     /// </summary>
     public void UpdateDiamonds()
     {
+        if (isSpectating) return;
+
         if (activeBlock == null) return;
 
         int diamonds = GameManager.Instance != null ? GameManager.Instance.GetDiamonds() : 0;

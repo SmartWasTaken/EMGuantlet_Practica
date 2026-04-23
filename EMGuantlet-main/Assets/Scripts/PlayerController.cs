@@ -16,6 +16,9 @@ public class PlayerController : CharController
 
     public NetworkVariable<bool> netIsAttacking = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
+    public NetworkVariable<int> netKeys = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> netDiamonds = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     public static System.Collections.Generic.List<PlayerController> ActivePlayers = new System.Collections.Generic.List<PlayerController>();
 
     /// <summary>
@@ -32,6 +35,9 @@ public class PlayerController : CharController
 
         ActivePlayers.Add(this);
         netIsAttacking.OnValueChanged += OnNetworkAttackChanged;
+
+        netKeys.OnValueChanged += OnKeysNetworkChanged;
+        netDiamonds.OnValueChanged += OnDiamondsNetworkChanged;
 
         if (IsOwner)
         {
@@ -65,6 +71,15 @@ public class PlayerController : CharController
             controls.Disable();
         }
         base.OnNetworkDespawn();
+    }
+
+    private void OnKeysNetworkChanged(int previousValue, int newValue)
+    {
+        if (IsOwner) GameEvents.KeysChanged();
+    }
+    private void OnDiamondsNetworkChanged(int previousValue, int newValue)
+    {
+        if (IsOwner) GameEvents.DiamondsChanged();
     }
 
     private void OnNetworkAttackChanged(bool previousValue, bool newValue)

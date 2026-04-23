@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 public abstract class EnemyController : CharController
 {
@@ -99,8 +100,14 @@ public abstract class EnemyController : CharController
     /// <summary>
     /// Genera los drops del enemigo usando la configuración activa del mapa.
     /// </summary>
+    /// <summary>
+    /// Genera los drops del enemigo usando la configuración activa del mapa.
+    /// </summary>
     protected virtual void spawnDrops()
     {
+        // ✅ PROTECCIÓN: Aseguramos que solo el Servidor pueda generar drops
+        if (!IsServer) return;
+
         if (dropPrefabs == null || dropPrefabs.Length == 0)
         {
             Debug.LogWarning($"[{gameObject.name}] No tiene dropPrefabs configurados.");
@@ -137,6 +144,16 @@ public abstract class EnemyController : CharController
                 GameObject drop = Instantiate(dropPrefab, dropPosition, Quaternion.identity);
                 UniqueEntity uniqueEntity = drop.GetComponent<UniqueEntity>();
                 if (uniqueEntity != null) uniqueEntity.RegenerateIdOnSpawn();
+
+                NetworkObject netObj = drop.GetComponent<NetworkObject>();
+                if (netObj != null)
+                {
+                    netObj.Spawn(true);
+                }
+                else
+                {
+                    Debug.LogError($"[spawnDrops] El prefab {dropPrefab.name} no tiene NetworkObject.");
+                }
             }
         }
     }

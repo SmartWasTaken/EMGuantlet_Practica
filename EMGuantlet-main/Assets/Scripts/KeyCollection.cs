@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
+using Unity.Netcode;
 
 [RequireComponent(typeof(UniqueEntity))]
-public class KeyCollection : MonoBehaviour
+public class KeyCollection : NetworkBehaviour
 {
     [SerializeField] private string playerTag = "Player";
 
@@ -26,18 +27,38 @@ public class KeyCollection : MonoBehaviour
     /// <summary>
     /// Detecta la colisión con el jugador e intenta recoger la llave.
     /// </summary>
-    private void OnCollisionStay2D(Collision2D collision)
+    private void OnCollisionEnter2D(Collision2D collision)
     {
         if (!collision.gameObject.CompareTag(playerTag)) return;
 
         PlayerController player = collision.gameObject.GetComponent<PlayerController>();
         if (player == null) return;
+
+        if (player.IsOwner)
+        {
+            Collider2D col = GetComponent<Collider2D>();
+            SpriteRenderer spr = GetComponentInChildren<SpriteRenderer>();
+            if (col != null) col.enabled = false;
+            if (spr != null) spr.enabled = false;
+        }
+
+        if (!IsServer) return;
+
         if (GameManager.Instance == null) return;
 
         if (GameManager.Instance.TryAddKey(player.EntityId, EntityId))
         {
             Debug.Log($"[{EntityType}:{EntityId}] collected by [Player:{player.EntityId}]");
-            Destroy(gameObject);
+
+            NetworkObject netObj = GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                netObj.Despawn();
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
         }
     }
 }

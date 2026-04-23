@@ -296,6 +296,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetKeys()
     {
+        if (LocalPlayerController != null) return LocalPlayerController.netKeys.Value;
         return playerState?.Keys ?? 0;
     }
 
@@ -304,6 +305,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetDiamonds()
     {
+        if (LocalPlayerController != null) return LocalPlayerController.netDiamonds.Value;
         return playerState?.Diamonds ?? 0;
     }
 
@@ -312,9 +314,15 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryAddKey(string playerEntityId, string keyEntityId)
     {
-        if (playerState == null) return false;
-        playerState.AddKey();
-        return true;
+        if (!IsServer) return false;
+
+        PlayerController pc = getPlayerControllerById(playerEntityId);
+        if (pc != null)
+        {
+            pc.netKeys.Value++;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -322,9 +330,15 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryAddDiamond(string playerEntityId, string diamondEntityId)
     {
-        if (playerState == null) return false;
-        playerState.AddDiamond();
-        return true;
+        if (!IsServer) return false;
+
+        PlayerController pc = getPlayerControllerById(playerEntityId);
+        if (pc != null)
+        {
+            pc.netDiamonds.Value++;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -332,8 +346,24 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public bool TryOpenDoor(string playerEntityId, string doorEntityId)
     {
-        if (playerState == null) return false;
-        return playerState.UseKey();
+        if (!IsServer) return false;
+
+        PlayerController pc = getPlayerControllerById(playerEntityId);
+        if (pc != null && pc.netKeys.Value > 0)
+        {
+            pc.netKeys.Value--;
+            return true;
+        }
+        return false;
+    }
+
+    private PlayerController getPlayerControllerById(string entityId)
+    {
+        foreach (PlayerController pc in PlayerController.ActivePlayers)
+        {
+            if (pc.EntityId == entityId) return pc;
+        }
+        return null;
     }
 
     /// <summary>

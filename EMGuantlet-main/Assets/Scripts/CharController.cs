@@ -109,6 +109,7 @@ public abstract class CharController : NetworkBehaviour
     public virtual void TakeDamage(int amount, Vector2 knockbackDir)
     {
         if (isDead) return;
+
         if (amount <= 0) return;
 
         health -= amount;
@@ -119,6 +120,11 @@ public abstract class CharController : NetworkBehaviour
 
         if (IsServer)
         {
+            if (health <= 0)
+            {
+                Die();
+            }
+
             ReceiveDamageClientRpc(amount, knockbackDir);
         }
     }
@@ -176,7 +182,9 @@ public abstract class CharController : NetworkBehaviour
     [ClientRpc]
     public void ReceiveDamageClientRpc(int amount, Vector2 knockbackDir)
     {
-        if (IsServer) return; // El servidor ya procesó el daño arriba, no lo hacemos dos veces
+        if (IsServer) return;
+
+        if (isDead) return;
 
         health -= amount;
         TakeKnockback(knockbackDir, knockbackForce);

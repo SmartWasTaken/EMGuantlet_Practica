@@ -194,7 +194,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2912807236
+  GlobalObjectIdHash: 368351378
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -221,6 +221,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
   stats: {fileID: 11400000, guid: ff37192e7cfcb0349ad1d099d2f93b2f, type: 2}
+  netMovement:
+    m_InternalValue: {x: 0, y: 0}
+  netCharacterIndex:
+    m_InternalValue: -1
+  netIsAttacking:
+    m_InternalValue: 0
+  netKeys:
+    m_InternalValue: 0
+  netDiamonds:
+    m_InternalValue: 0
 --- !u!114 &7020552734176444248
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -264,9 +274,9 @@ MonoBehaviour:
   UseUnreliableDeltas: 0
   SyncPositionX: 1
   SyncPositionY: 1
-  SyncPositionZ: 1
-  SyncRotAngleX: 1
-  SyncRotAngleY: 1
+  SyncPositionZ: 0
+  SyncRotAngleX: 0
+  SyncRotAngleY: 0
   SyncRotAngleZ: 1
   SyncScaleX: 0
   SyncScaleY: 0
