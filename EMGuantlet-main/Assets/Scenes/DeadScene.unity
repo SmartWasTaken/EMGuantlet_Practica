@@ -334,7 +334,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 76861580}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 179676400}
+        m_TargetAssemblyTypeName: GameOverCanvasHandler, Assembly-CSharp
+        m_MethodName: OnSpectatePreviousClicked
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &76861580
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2765,7 +2777,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1895695182}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 179676400}
+        m_TargetAssemblyTypeName: GameOverCanvasHandler, Assembly-CSharp
+        m_MethodName: OnSpectateNextClicked
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1895695182
 MonoBehaviour:
   m_ObjectHideFlags: 0
