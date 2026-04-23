@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
+using System.Collections;
 
 [RequireComponent(typeof(UniqueEntity))]
 public class KeyCollection : NetworkBehaviour
@@ -22,6 +23,46 @@ public class KeyCollection : NetworkBehaviour
         {
             Debug.LogWarning($"[KeyCollection] {gameObject.name} tiene tipo {uniqueEntity.Type} en lugar de Pickup_Key");
         }
+    }
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        StartCoroutine(SpawnAnimation());
+    }
+    private IEnumerator SpawnAnimation()
+    {
+        Transform visualTransform = transform;
+
+        SpriteRenderer spr = GetComponentInChildren<SpriteRenderer>();
+        if (spr != null && spr.transform != transform)
+        {
+            visualTransform = spr.transform;
+        }
+
+        Vector3 originalScale = visualTransform.localScale;
+        Vector3 originalPosition = visualTransform.localPosition;
+
+        visualTransform.localScale = Vector3.zero;
+
+        float duration = 0.3f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float percent = elapsed / duration;
+
+            float scaleValue = Mathf.Sin(percent * Mathf.PI);
+            visualTransform.localScale = originalScale * (percent + (scaleValue * 0.3f));
+
+            float heightOffset = Mathf.Sin(percent * Mathf.PI) * 0.5f;
+            visualTransform.localPosition = originalPosition + new Vector3(0, heightOffset, 0);
+
+            yield return null;
+        }
+
+        visualTransform.localScale = originalScale;
+        visualTransform.localPosition = originalPosition;
     }
 
     /// <summary>

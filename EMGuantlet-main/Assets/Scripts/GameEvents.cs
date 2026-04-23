@@ -9,6 +9,7 @@ public static class GameEvents
     public static event Action<PlayerController> OnLocalPlayerRegistered;
     public static event Action OnPlayerDied;
     public static event Action OnVictory;
+    public static event Action<PlayerController> OnSpectatorTargetChanged;
 
     /// <summary>
     /// Notifica un cambio en la salud del jugador.
@@ -66,6 +67,11 @@ public static class GameEvents
         OnVictory?.Invoke();
     }
 
+    public static void SpectatorTargetChanged(PlayerController newTarget)
+    {
+        OnSpectatorTargetChanged?.Invoke(newTarget);
+    }
+
     /// <summary>
     /// Limpia los eventos asociados al ciclo de vida de una escena.
     /// </summary>
@@ -76,6 +82,7 @@ public static class GameEvents
         OnDiamondsChanged = null;
         OnEnemyKilled = null;
         OnLocalPlayerRegistered = null;
+        OnSpectatorTargetChanged = null;
     }
 
     /// <summary>

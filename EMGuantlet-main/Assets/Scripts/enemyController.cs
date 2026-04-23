@@ -68,7 +68,6 @@ public abstract class EnemyController : CharController
     {
         base.Die();
 
-        // ✅ Solo el servidor suma al contador y suelta los objetos
         if (IsServer && GameManager.Instance != null)
             GameManager.Instance.AddEnemyKill();
 
@@ -91,7 +90,7 @@ public abstract class EnemyController : CharController
     {
         if (health <= 0 && !isDead)
         {
-            Die(); // Ejecuta la animación del Animator
+            Die();
         }
     }
 

@@ -142,7 +142,10 @@ public class GameManager : NetworkBehaviour
         {
             Debug.LogWarning("[GameManager] Conexión perdida o finalizada. Volviendo al Menú Principal...");
             NetworkManager.Singleton.Shutdown();
-            SceneManager.LoadScene(SceneNames.MainMenu);
+            if (LevelTransitioner.Instance != null)
+                LevelTransitioner.Instance.FadeOutAndLoadLocal(SceneNames.MainMenu);
+            else
+                SceneManager.LoadScene(SceneNames.MainMenu);
         }
     }
 
@@ -282,7 +285,7 @@ public class GameManager : NetworkBehaviour
     public void ResetGameData()
     {
         playerState?.ResetState();
-        isVictory = false; // ✅ Reiniciamos la bandera de victoria
+        isVictory = false;
 
         if (IsServer) netEnemiesKilled.Value = 0;
     }
@@ -313,7 +316,6 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public int GetDiamonds()
     {
-        // ✅ CORRECCIÓN: Si ya hemos ganado, devolvemos el valor congelado
         if (isVictory) return finalDiamonds;
         if (LocalPlayerController != null) return LocalPlayerController.netDiamonds.Value;
         return playerState?.Diamonds ?? 0;
@@ -422,7 +424,10 @@ public class GameManager : NetworkBehaviour
         SelectedCharacterStats = selectedCharacter;
         ResetGameData();
 
-        SceneManager.LoadScene(SceneNames.PlaygroundLevel);
+        if (LevelTransitioner.Instance != null)
+            LevelTransitioner.Instance.FadeOutAndLoadNetwork(SceneNames.PlaygroundLevel);
+        else
+            NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.PlaygroundLevel, LoadSceneMode.Single);
     }
 
     /// <summary>
@@ -496,17 +501,16 @@ public class GameManager : NetworkBehaviour
     [ClientRpc]
     private void TriggerVictoryClientRpc()
     {
-        // 1. Congelamos los datos. Así, aunque se destruya el PlayerController al cambiar de escena,
-        // la pantalla de victoria podrá seguir leyendo nuestros puntos.
         finalKeys = GetKeys();
         finalDiamonds = GetDiamonds();
         isVictory = true;
 
         Debug.Log($"[GameManager] Cargando Victoria localmente... Keys: {finalKeys}, Diamonds: {finalDiamonds}");
 
-        // 2. Cargamos la escena con el SceneManager clásico de Unity. 
-        // Esto destruye el nivel, pero nos asegura que la pantalla de victoria se verá al 100%.
-        SceneManager.LoadScene(SceneNames.VictoryScene, LoadSceneMode.Single);
+        if (LevelTransitioner.Instance != null)
+            LevelTransitioner.Instance.FadeOutAndLoadLocal(SceneNames.VictoryScene);
+        else
+            SceneManager.LoadScene(SceneNames.VictoryScene, LoadSceneMode.Single);
     }
 
     /// <summary>

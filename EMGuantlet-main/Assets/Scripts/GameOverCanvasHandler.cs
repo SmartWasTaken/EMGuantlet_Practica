@@ -100,6 +100,7 @@ public class GameOverCanvasHandler : MonoBehaviour
         if (cameraController != null)
         {
             cameraController.cycleSpectatorTarget(1);
+            if (cameraController.SpectatedPlayer != null) GameEvents.SpectatorTargetChanged(cameraController.SpectatedPlayer);
         }
     }
 
@@ -108,6 +109,7 @@ public class GameOverCanvasHandler : MonoBehaviour
         if (cameraController != null)
         {
             cameraController.cycleSpectatorTarget(1);
+            if (cameraController.SpectatedPlayer != null) GameEvents.SpectatorTargetChanged(cameraController.SpectatedPlayer);
         }
     }
 
@@ -116,6 +118,7 @@ public class GameOverCanvasHandler : MonoBehaviour
         if (cameraController != null)
         {
             cameraController.cycleSpectatorTarget(-1);
+            if (cameraController.SpectatedPlayer != null) GameEvents.SpectatorTargetChanged(cameraController.SpectatedPlayer);
         }
     }
 
@@ -145,7 +148,6 @@ public class GameOverCanvasHandler : MonoBehaviour
 
                 if (backButton != null)
                 {
-                    // Si alguien sigue vivo, bloqueamos el botón. Si todos murieron, lo liberamos.
                     backButton.interactable = !someoneAlive;
 
                     TextMeshProUGUI btnText = backButton.GetComponentInChildren<TextMeshProUGUI>();

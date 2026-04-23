@@ -79,6 +79,7 @@ public class HeadUpDisplayController : MonoBehaviour
         GameEvents.OnHealthChanged += UpdateHearts;
         GameEvents.OnKeysChanged += UpdateKeys;
         GameEvents.OnDiamondsChanged += UpdateDiamonds;
+        GameEvents.OnSpectatorTargetChanged += HandleSpectatorTargetChanged;
     }
 
     /// <summary>
@@ -89,6 +90,7 @@ public class HeadUpDisplayController : MonoBehaviour
         GameEvents.OnHealthChanged -= UpdateHearts;
         GameEvents.OnKeysChanged -= UpdateKeys;
         GameEvents.OnDiamondsChanged -= UpdateDiamonds;
+        GameEvents.OnSpectatorTargetChanged -= HandleSpectatorTargetChanged;
     }
 
     private void Update()
@@ -114,26 +116,6 @@ public class HeadUpDisplayController : MonoBehaviour
             activeBlock.imageDiamondsHundreds.sprite = getSpriteForDigit(hundreds);
             activeBlock.imageDiamondTens.sprite = getSpriteForDigit(tens);
             activeBlock.imageDiamondUnits.sprite = getSpriteForDigit(dUnits);
-        }
-
-        if (GameManager.Instance != null)
-        {
-            ulong id = spectated.OwnerClientId;
-            int characterIndex = GameManager.Instance.GetPlayerSelection(id);
-            if (characterIndex >= 0 && characterIndex < GameManager.Instance.allCharacters.Length)
-            {
-                string charName = GameManager.Instance.allCharacters[characterIndex].characterName.ToLowerInvariant();
-                if (charName.Contains("yellow")) activeBlock = findBlockBySlot(HudSlot.Yellow);
-                else if (charName.Contains("red")) activeBlock = findBlockBySlot(HudSlot.Red);
-                else if (charName.Contains("purple")) activeBlock = findBlockBySlot(HudSlot.Purple);
-                else if (charName.Contains("green")) activeBlock = findBlockBySlot(HudSlot.Green);
-
-                refreshBlockVisibility();
-                if (activeBlock != null && activeBlock.textPlayerName != null)
-                {
-                    activeBlock.textPlayerName.text = GameManager.Instance.GetPlayerName(id);
-                }
-            }
         }
     }
 
@@ -311,5 +293,34 @@ public class HeadUpDisplayController : MonoBehaviour
             9 => spriteNine,
             _ => spriteZero
         };
+    }
+
+    private void HandleSpectatorTargetChanged(PlayerController newTarget)
+    {
+        if (newTarget == null || GameManager.Instance == null) return;
+
+        ulong id = newTarget.OwnerClientId;
+        int characterIndex = GameManager.Instance.GetPlayerSelection(id);
+        if (characterIndex >= 0 && characterIndex < GameManager.Instance.allCharacters.Length)
+        {
+            string charName = GameManager.Instance.allCharacters[characterIndex].characterName.ToLowerInvariant();
+            if (charName.Contains("yellow")) activeBlock = findBlockBySlot(HudSlot.Yellow);
+            else if (charName.Contains("red")) activeBlock = findBlockBySlot(HudSlot.Red);
+            else if (charName.Contains("purple")) activeBlock = findBlockBySlot(HudSlot.Purple);
+            else if (charName.Contains("green")) activeBlock = findBlockBySlot(HudSlot.Green);
+
+            refreshBlockVisibility();
+
+            Invoke(nameof(ForceApplySpectatorName), 0.05f);
+        }
+    }
+
+    private void ForceApplySpectatorName()
+    {
+        if (activeBlock != null && activeBlock.textPlayerName != null && cameraController != null && cameraController.SpectatedPlayer != null)
+        {
+            ulong id = cameraController.SpectatedPlayer.OwnerClientId;
+            activeBlock.textPlayerName.text = GameManager.Instance.GetPlayerName(id);
+        }
     }
 }
