@@ -56,6 +56,13 @@ public class MainMenuButtonsHandler : MonoBehaviour
     private void OnHostButtonClicked()
     {
         SavePlayerName();
+
+        UnityTransport transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        if (transport != null)
+        {
+            transport.SetConnectionData("127.0.0.1", 7777, "0.0.0.0");
+        }
+
         NetworkManager.Singleton.StartHost();
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.CharSelection, LoadSceneMode.Single);
     }
