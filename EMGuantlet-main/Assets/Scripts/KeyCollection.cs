@@ -9,12 +9,14 @@ public class KeyCollection : NetworkBehaviour
 
     private UniqueEntity uniqueEntity;
 
+    private bool canBeCollected = false;
+    private bool hasBeenCollectedServer = false;
+
+    private Vector3 targetScale;
+
     public string EntityId => uniqueEntity?.EntityId ?? "UNKNOWN";
     public EntityType EntityType => uniqueEntity?.Type ?? EntityType.Pickup_Key;
 
-    /// <summary>
-    /// Inicializa la referencia de entidad única y valida el tipo configurado.
-    /// </summary>
     private void Awake()
     {
         uniqueEntity = GetComponent<UniqueEntity>();
@@ -23,12 +25,19 @@ public class KeyCollection : NetworkBehaviour
         {
             Debug.LogWarning($"[KeyCollection] {gameObject.name} tiene tipo {uniqueEntity.Type} en lugar de Pickup_Key");
         }
+
+        SpriteRenderer spr = GetComponentInChildren<SpriteRenderer>();
+        targetScale = (spr != null && spr.transform != transform) ? spr.transform.localScale : transform.localScale;
     }
+
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+        canBeCollected = false;
+        hasBeenCollectedServer = false;
         StartCoroutine(SpawnAnimation());
     }
+
     private IEnumerator SpawnAnimation()
     {
         Transform visualTransform = transform;
@@ -39,7 +48,6 @@ public class KeyCollection : NetworkBehaviour
             visualTransform = spr.transform;
         }
 
-        Vector3 originalScale = visualTransform.localScale;
         Vector3 originalPosition = visualTransform.localPosition;
 
         visualTransform.localScale = Vector3.zero;
@@ -53,7 +61,7 @@ public class KeyCollection : NetworkBehaviour
             float percent = elapsed / duration;
 
             float scaleValue = Mathf.Sin(percent * Mathf.PI);
-            visualTransform.localScale = originalScale * (percent + (scaleValue * 0.3f));
+            visualTransform.localScale = targetScale * (percent + (scaleValue * 0.3f));
 
             float heightOffset = Mathf.Sin(percent * Mathf.PI) * 0.5f;
             visualTransform.localPosition = originalPosition + new Vector3(0, heightOffset, 0);
@@ -61,15 +69,26 @@ public class KeyCollection : NetworkBehaviour
             yield return null;
         }
 
-        visualTransform.localScale = originalScale;
+        visualTransform.localScale = targetScale;
         visualTransform.localPosition = originalPosition;
+
+        canBeCollected = true;
     }
 
-    /// <summary>
-    /// Detecta la colisión con el jugador e intenta recoger la llave.
-    /// </summary>
-    private void OnTriggerEnter2D(Collider2D other)
+    private void OnCollisionEnter2D(Collision2D collision)
     {
+        TryCollect(collision.gameObject);
+    }
+
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        TryCollect(collision.gameObject);
+    }
+
+    private void TryCollect(GameObject other)
+    {
+        if (!canBeCollected) return;
+
         if (!other.CompareTag(playerTag)) return;
 
         PlayerController player = other.GetComponent<PlayerController>();
@@ -85,10 +104,13 @@ public class KeyCollection : NetworkBehaviour
 
         if (!IsServer) return;
 
+        if (hasBeenCollectedServer) return;
+
         if (GameManager.Instance == null) return;
 
         if (GameManager.Instance.TryAddKey(player.EntityId, EntityId))
         {
+            hasBeenCollectedServer = true;
             Debug.Log($"[{EntityType}:{EntityId}] collected by [Player:{player.EntityId}]");
 
             NetworkObject netObj = GetComponent<NetworkObject>();
