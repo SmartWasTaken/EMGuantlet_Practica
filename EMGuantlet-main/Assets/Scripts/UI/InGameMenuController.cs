@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Audio;
+using TMPro;
 
 public class InGameMenuController : MonoBehaviour
 {
@@ -16,14 +17,23 @@ public class InGameMenuController : MonoBehaviour
     [SerializeField] private Toggle fpsToggle;
     [SerializeField] private FPSCounter fpsCounter;
 
+    [Header("Exit Settings")]
+    [SerializeField] private Button exitMenuButton;
+    [SerializeField] private GameObject confirmExitPanel;
+    [SerializeField] private Button confirmExitButton;
+    [SerializeField] private Button cancelExitButton;
+    [SerializeField] private TextMeshProUGUI confirmWarningText;
+
     private bool isMenuOpen = false;
 
     private void Start()
     {
-        if (menuPanel != null)
-        {
-            menuPanel.SetActive(false);
-        }
+        if (menuPanel != null) menuPanel.SetActive(false);
+        if (confirmExitPanel != null) confirmExitPanel.SetActive(false);
+
+        if (exitMenuButton != null) exitMenuButton.onClick.AddListener(OnExitMenuClicked);
+        if (confirmExitButton != null) confirmExitButton.onClick.AddListener(OnConfirmExitClicked);
+        if (cancelExitButton != null) cancelExitButton.onClick.AddListener(OnCancelExitClicked);
 
         if (musicSlider != null)
         {
@@ -66,11 +76,48 @@ public class InGameMenuController : MonoBehaviour
         {
             menuPanel.SetActive(isMenuOpen);
         }
+
+        if (!isMenuOpen && confirmExitPanel != null)
+        {
+            confirmExitPanel.SetActive(false);
+        }
     }
 
     public void CloseMenu()
     {
         if (isMenuOpen) ToggleMenu();
+    }
+
+    private void OnExitMenuClicked()
+    {
+        if (confirmExitPanel != null) confirmExitPanel.SetActive(true);
+
+        if (confirmWarningText != null)
+        {
+            bool isHost = Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsServer;
+
+            if (isHost)
+            {
+                confirmWarningText.text = "¿Estás seguro de que quieres salir?\n\n<color=#FF5555>Eres el HOST. Si sales, todos los jugadores se desconectarán de la partida.</color>";
+            }
+            else
+            {
+                confirmWarningText.text = "¿Estás seguro de que quieres salir de la partida?";
+            }
+        }
+    }
+
+    private void OnCancelExitClicked()
+    {
+        if (confirmExitPanel != null) confirmExitPanel.SetActive(false);
+    }
+
+    private void OnConfirmExitClicked()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.DisconnectAndReturnToMenu();
+        }
     }
 
     private void SetMusicVolume(float value)

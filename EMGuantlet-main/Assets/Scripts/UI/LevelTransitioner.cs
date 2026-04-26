@@ -90,6 +90,7 @@ public class LevelTransitioner : MonoBehaviour
 
     private IEnumerator FadeAndLoad(string sceneName, bool isNetwork)
     {
+        fadeImage.enabled = true;
         canvasGroup.blocksRaycasts = true;
 
         yield return StartCoroutine(FadeRoutine(0f, 1f, 0.5f));
@@ -106,11 +107,15 @@ public class LevelTransitioner : MonoBehaviour
 
     private IEnumerator FadeInAfterLoad()
     {
+        fadeImage.enabled = true;
         canvasGroup.alpha = 1f;
+
         yield return new WaitForSeconds(0.2f);
+
         yield return StartCoroutine(FadeRoutine(1f, 0f, 0.5f));
 
         canvasGroup.blocksRaycasts = false;
+        fadeImage.enabled = false;
     }
 
     private IEnumerator FadeRoutine(float startAlpha, float endAlpha, float duration)

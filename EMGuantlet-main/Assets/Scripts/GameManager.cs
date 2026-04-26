@@ -16,6 +16,8 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager Instance { get; private set; }
 
+    public static string LastDisconnectReason = "";
+
     public PlayerController LocalPlayerController { get; private set; }
     public Transform LocalPlayerTransform => LocalPlayerController != null ? LocalPlayerController.transform : null;
     public UniqueEntity LocalPlayerEntity { get; private set; }
@@ -102,6 +104,11 @@ public class GameManager : NetworkBehaviour
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientDisconnectCallback += HandleClientDisconnect;
+
+            if (IsServer)
+            {
+                NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
+            }
         }
 
         netEnemiesKilled.OnValueChanged += (oldVal, newVal) => GameEvents.EnemyKilled(newVal);
@@ -116,7 +123,30 @@ public class GameManager : NetworkBehaviour
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnect;
+
+            if (IsServer)
+            {
+                NetworkManager.Singleton.ConnectionApprovalCallback = null;
+            }
         }
+    }
+
+    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    {
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        if (currentScene == SceneNames.PlaygroundLevel || currentScene == SceneNames.DeadScene || currentScene == SceneNames.VictoryScene)
+        {
+            response.Approved = false;
+            response.Reason = "Partida en curso. No puedes unirte ahora.";
+            response.CreatePlayerObject = false;
+            Debug.LogWarning("[GameManager] Un jugador intentó unirse en mitad de la partida. Conexión rechazada.");
+            return;
+        }
+
+        response.Approved = true;
+        response.CreatePlayerObject = true;
+        response.Pending = false;
     }
 
     /// <summary>
@@ -140,13 +170,62 @@ public class GameManager : NetworkBehaviour
 
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
-            Debug.LogWarning("[GameManager] Conexión perdida o finalizada. Volviendo al Menú Principal...");
+            if (string.IsNullOrEmpty(LastDisconnectReason))
+            {
+                LastDisconnectReason = NetworkManager.Singleton.DisconnectReason;
+                if (string.IsNullOrEmpty(LastDisconnectReason) && !IsServer)
+                {
+                    LastDisconnectReason = "Se ha perdido la conexión con el Host repentinamente.";
+                }
+            }
+
+            Debug.LogWarning($"[GameManager] Conexión perdida o finalizada: {LastDisconnectReason}. Volviendo al Menú Principal...");
             NetworkManager.Singleton.Shutdown();
+
             if (LevelTransitioner.Instance != null)
                 LevelTransitioner.Instance.FadeOutAndLoadLocal(SceneNames.MainMenu);
             else
                 SceneManager.LoadScene(SceneNames.MainMenu);
+
+            Destroy(gameObject);
         }
+    }
+
+    public void DisconnectAndReturnToMenu()
+    {
+        if (IsServer)
+        {
+            NotifyHostDisconnectionClientRpc("El Host ha cerrado la partida voluntariamente.");
+            Invoke(nameof(ExecuteShutdown), 0.2f);
+        }
+        else
+        {
+            ExecuteShutdown();
+        }
+    }
+
+    [ClientRpc]
+    private void NotifyHostDisconnectionClientRpc(string reason)
+    {
+        if (!IsServer)
+        {
+            LastDisconnectReason = reason;
+        }
+    }
+
+    private void ExecuteShutdown()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        if (LevelTransitioner.Instance != null)
+            LevelTransitioner.Instance.FadeOutAndLoadLocal(SceneNames.MainMenu);
+        else
+            SceneManager.LoadScene(SceneNames.MainMenu);
+
+        Destroy(gameObject);
     }
 
     [Rpc(SendTo.Server)]

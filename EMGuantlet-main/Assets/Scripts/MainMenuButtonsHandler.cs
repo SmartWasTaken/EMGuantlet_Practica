@@ -13,11 +13,21 @@ using UnityEditor;
 
 public class MainMenuButtonsHandler : MonoBehaviour
 {
-    [Header("Paneles UI")]
+    [Header("Paneles UI Principales")]
     [SerializeField] private GameObject mainPanel;
     [SerializeField] private GameObject clientIpPanel;
     [SerializeField] private GameObject optionsPanel;
     [SerializeField] private GameObject creditsPanel;
+
+    [Header("Panel de Info (Rechazos al unirse)")]
+    [SerializeField] private GameObject infoPanel;
+    [SerializeField] private TextMeshProUGUI infoText;
+    [SerializeField] private Button buttonCloseInfo;
+
+    [Header("Panel de Desconexión (Host se fue)")]
+    [SerializeField] private GameObject disconnectPanel;
+    [SerializeField] private TextMeshProUGUI disconnectText;
+    [SerializeField] private Button buttonCloseDisconnect;
 
     [Header("Campos de Texto")]
     [SerializeField] private TMP_InputField playerNameInput;
@@ -41,6 +51,7 @@ public class MainMenuButtonsHandler : MonoBehaviour
     [SerializeField] private Slider musicSlider;
     [SerializeField] private Slider sfxSlider;
     [SerializeField] private Toggle fpsToggle;
+
     public static string LocalPlayerName { get; private set; } = "";
 
     private void Awake()
@@ -55,6 +66,10 @@ public class MainMenuButtonsHandler : MonoBehaviour
         if (buttonCancelClient != null) buttonCancelClient.onClick.AddListener(OnCancelClientClicked);
         if (buttonBackFromOptions != null) buttonBackFromOptions.onClick.AddListener(OnBackFromOptionsClicked);
         if (buttonBackFromCredits != null) buttonBackFromCredits.onClick.AddListener(OnBackFromCreditsClicked);
+
+        if (buttonCloseInfo != null) buttonCloseInfo.onClick.AddListener(() => { if (infoPanel != null) infoPanel.SetActive(false); });
+
+        if (buttonCloseDisconnect != null) buttonCloseDisconnect.onClick.AddListener(() => { if (disconnectPanel != null) disconnectPanel.SetActive(false); });
     }
 
     private void Start()
@@ -63,6 +78,8 @@ public class MainMenuButtonsHandler : MonoBehaviour
         if (clientIpPanel != null) clientIpPanel.SetActive(false);
         if (optionsPanel != null) optionsPanel.SetActive(false);
         if (creditsPanel != null) creditsPanel.SetActive(false);
+        if (infoPanel != null) infoPanel.SetActive(false);
+        if (disconnectPanel != null) disconnectPanel.SetActive(false);
 
         if (ipAddressInput != null) ipAddressInput.text = "127.0.0.1";
 
@@ -87,6 +104,58 @@ public class MainMenuButtonsHandler : MonoBehaviour
             fpsToggle.onValueChanged.AddListener(ToggleFPS);
             bool savedFPSState = PlayerPrefs.GetInt("ShowFPSPref", 1) == 1;
             fpsToggle.isOn = savedFPSState;
+        }
+
+        if (!string.IsNullOrEmpty(GameManager.LastDisconnectReason))
+        {
+            if (disconnectPanel != null)
+            {
+                disconnectPanel.SetActive(true);
+                if (disconnectText != null) disconnectText.text = GameManager.LastDisconnectReason;
+            }
+            else if (infoPanel != null)
+            {
+                infoPanel.SetActive(true);
+                if (infoText != null) infoText.text = GameManager.LastDisconnectReason;
+            }
+
+            GameManager.LastDisconnectReason = "";
+        }
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback += HandleClientRejection;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientRejection;
+        }
+    }
+
+    private void HandleClientRejection(ulong clientId)
+    {
+        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsServer)
+        {
+            string reason = NetworkManager.Singleton.DisconnectReason;
+
+            if (string.IsNullOrEmpty(reason))
+            {
+                reason = "No se ha podido conectar al Host. Partida no encontrada o en curso.";
+            }
+
+            if (infoPanel != null) infoPanel.SetActive(true);
+            if (infoText != null) infoText.text = reason;
+
+            if (clientIpPanel != null) clientIpPanel.SetActive(false);
+            if (optionsPanel != null) optionsPanel.SetActive(false);
+            if (creditsPanel != null) creditsPanel.SetActive(false);
+            if (mainPanel != null) mainPanel.SetActive(true);
+
+            NetworkManager.Singleton.Shutdown();
         }
     }
 
@@ -173,7 +242,6 @@ public class MainMenuButtonsHandler : MonoBehaviour
         Application.Quit();
 #endif
     }
-
 
     private void SetMusicVolume(float value)
     {

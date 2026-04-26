@@ -1,10 +1,14 @@
 ﻿using Unity.Netcode;
 using UnityEngine;
+using System.Collections;
 
 public abstract class EnemyController : CharController
 {
     protected int damageToPlayer;
     protected GameObject[] dropPrefabs;
+
+    protected bool isSpawning = false;
+    protected Vector3 targetScale;
 
     /// <summary>
     /// Inicializa la configuración base del enemigo heredada del controlador de personaje.
@@ -12,6 +16,36 @@ public abstract class EnemyController : CharController
     protected override void Awake()
     {
         base.Awake();
+
+        targetScale = transform.localScale;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        StartCoroutine(SpawnRoutine());
+    }
+
+    private IEnumerator SpawnRoutine()
+    {
+        isSpawning = true;
+        transform.localScale = Vector3.zero;
+
+        float duration = 1.0f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float percent = elapsed / duration;
+            float scaleMultiplier = Mathf.Sin(percent * Mathf.PI * 0.5f);
+
+            transform.localScale = targetScale * scaleMultiplier;
+            yield return null;
+        }
+
+        transform.localScale = targetScale;
+        isSpawning = false;
     }
 
     /// <summary>
@@ -20,6 +54,8 @@ public abstract class EnemyController : CharController
     protected virtual void OnCollisionStay2D(Collision2D collision)
     {
         if (!IsServer) return;
+
+        if (isSpawning) return;
 
         if (!collision.gameObject.CompareTag("Player")) return;
 
