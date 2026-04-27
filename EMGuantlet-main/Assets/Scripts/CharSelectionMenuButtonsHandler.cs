@@ -13,7 +13,7 @@ public class CharSelectionMenuButtonsHandler : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI logText;
     [SerializeField] private GameObject deselectText;
 
-    [Header("Nombres sobre los botones (¡NUEVO!)")]
+    [Header("Nombres sobre los botones")]
     [SerializeField] private TextMeshProUGUI[] colorNameLabels;
 
     [Header("Botones de Color")]
