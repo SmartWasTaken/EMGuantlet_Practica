@@ -17,6 +17,7 @@ public class GameManager : NetworkBehaviour
     public static GameManager Instance { get; private set; }
 
     public static string LastDisconnectReason = "";
+    public static event System.Action<string> OnGameLogMessage;
 
     public PlayerController LocalPlayerController { get; private set; }
     public Transform LocalPlayerTransform => LocalPlayerController != null ? LocalPlayerController.transform : null;
@@ -156,6 +157,11 @@ public class GameManager : NetworkBehaviour
     {
         if (IsServer)
         {
+            if (playerNames.ContainsKey(clientId) && SceneManager.GetActiveScene().name == SceneNames.PlaygroundLevel)
+            {
+                BroadcastLogMessageClientRpc($"<color=#AAAAAA>{playerNames[clientId]} se ha desconectado.</color>");
+            }
+
             playerSelections.Remove(clientId);
             playerNames.Remove(clientId);
             SyncNamesToClients();
@@ -191,17 +197,23 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    [ClientRpc]
+    public void BroadcastLogMessageClientRpc(string message)
+    {
+        OnGameLogMessage?.Invoke(message);
+    }
+
     public void DisconnectAndReturnToMenu()
     {
+        CameraController cam = FindFirstObjectByType<CameraController>();
+        if (cam != null) cam.StopSpectating();
+
         if (IsServer)
         {
             NotifyHostDisconnectionClientRpc("El Host ha cerrado la partida voluntariamente.");
-            Invoke(nameof(ExecuteShutdown), 0.2f);
         }
-        else
-        {
-            ExecuteShutdown();
-        }
+
+        Invoke(nameof(ExecuteShutdown), 0.2f);
     }
 
     [ClientRpc]

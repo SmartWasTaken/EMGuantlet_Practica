@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Unity.Netcode;
 
 public class CameraController : MonoBehaviour
 {
@@ -8,9 +9,8 @@ public class CameraController : MonoBehaviour
     private int currentSpectatorIndex = 0;
     public bool IsSpectating { get; private set; } = false;
 
-    /// <summary>
-    /// Inicializa la referencia al jugador local y suscribe el evento de registro.
-    /// </summary>
+    private PlayerController lastSpectatedPlayer;
+
     private void Start()
     {
         if (GameManager.Instance != null)
@@ -22,18 +22,14 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Libera la suscripción al evento al destruir el objeto.
-    /// </summary>
     private void OnDestroy()
     {
         if (GameManager.Instance != null)
             GameEvents.OnLocalPlayerRegistered -= handlePlayerRegistered;
+
+        StopSpectating();
     }
 
-    /// <summary>
-    /// Actualiza la posición de la cámara para seguir al objetivo.
-    /// </summary>
     private void LateUpdate()
     {
         if (target == null || isTargetDead())
@@ -48,6 +44,41 @@ public class CameraController : MonoBehaviour
 
         if (target != null)
             transform.position = target.position + offset;
+
+        if (SpectatedPlayer != lastSpectatedPlayer)
+        {
+            UpdateSpectatorCounts();
+        }
+    }
+
+    public void StopSpectating()
+    {
+        if (IsSpectating)
+        {
+            if (lastSpectatedPlayer != null && NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
+            {
+                lastSpectatedPlayer.ChangeSpectatorCountServerRpc(-1);
+            }
+            SpectatedPlayer = null;
+            lastSpectatedPlayer = null;
+            IsSpectating = false;
+        }
+    }
+
+    private void UpdateSpectatorCounts()
+    {
+        if (IsSpectating)
+        {
+            if (lastSpectatedPlayer != null && NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
+            {
+                lastSpectatedPlayer.ChangeSpectatorCountServerRpc(-1);
+            }
+            if (SpectatedPlayer != null && NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
+            {
+                SpectatedPlayer.ChangeSpectatorCountServerRpc(1);
+            }
+        }
+        lastSpectatedPlayer = SpectatedPlayer;
     }
 
     private bool isTargetDead()
@@ -97,9 +128,6 @@ public class CameraController : MonoBehaviour
         IsSpectating = true;
     }
 
-    /// <summary>
-    /// Actualiza el objetivo de la cámara cuando se registra el jugador local.
-    /// </summary>
     private void handlePlayerRegistered(PlayerController player)
     {
         target = player != null ? player.transform : null;

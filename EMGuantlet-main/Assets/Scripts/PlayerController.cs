@@ -19,6 +19,8 @@ public class PlayerController : CharController
     public NetworkVariable<int> netKeys = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<int> netDiamonds = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
+    public NetworkVariable<int> netSpectatorsCount = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     public static System.Collections.Generic.List<PlayerController> ActivePlayers = new System.Collections.Generic.List<PlayerController>();
 
     /// <summary>
@@ -70,7 +72,15 @@ public class PlayerController : CharController
             controls.Player.Attack.performed -= onAttack;
             controls.Disable();
         }
+
         base.OnNetworkDespawn();
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    public void ChangeSpectatorCountServerRpc(int amount)
+    {
+        netSpectatorsCount.Value += amount;
+        if (netSpectatorsCount.Value < 0) netSpectatorsCount.Value = 0;
     }
 
     private void OnKeysNetworkChanged(int previousValue, int newValue)
@@ -107,21 +117,6 @@ public class PlayerController : CharController
     }
 
     /// <summary>
-    /// Inicializa estado del jugador y notifica los valores iniciales al HUD.
-    /// </summary>
-    //protected override void Start()
-    //{
-    //    base.Start();
-    //
-    //    // Dispara eventos iniciales para actualizar el HUD
-    //    GameEvents.HealthChanged(health);
-    //    GameEvents.KeysChanged();
-    //    GameEvents.DiamondsChanged();
-    //
-    //    IsAttacking = false;
-    //}
-
-    /// <summary>
     /// Actualiza animación, orientación y estado de vida en cada frame.
     /// </summary>
     protected override void Update()
@@ -144,35 +139,21 @@ public class PlayerController : CharController
     }
 
     /// <summary>
-    /// Activa el mapa de controles y suscribe la acción de ataque.
-    /// </summary>
-    //private void OnEnable()
-    //{
-    //    controls.Enable();
-    //    controls.Player.Attack.performed += onAttack;
-    //}
-    //
-    ///// <summary>
-    ///// Desuscribe la acción de ataque y desactiva el mapa de controles.
-    ///// </summary>
-    //private void OnDisable()
-    //{
-    //    controls.Player.Attack.performed -= onAttack;
-    //    controls.Disable();
-    //}
-
-    /// <summary>
     /// Gestiona la muerte del jugador y lanza el flujo de fin de partida.
     /// </summary>
     public override void Die()
     {
         base.Die();
 
-        // Dispara evento de muerte
         GameEvents.PlayerDied();
 
         GameManager.Instance?.TriggerGameOver();
 
+        if (GameManager.Instance != null && IsServer)
+        {
+            string pName = GameManager.Instance.GetPlayerName(OwnerClientId);
+            GameManager.Instance.BroadcastLogMessageClientRpc($"<color=#FF5555>{pName} ha muerto.</color>");
+        }
     }
 
     /// <summary>

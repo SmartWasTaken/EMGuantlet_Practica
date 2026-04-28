@@ -40,6 +40,15 @@ public class HeadUpDisplayController : MonoBehaviour
     [Header("Single Player")]
     [SerializeField] private bool hideNonSelectedBlocks = true;
 
+    [Header("Log de Partida")]
+    [SerializeField] private GameObject logPanel;
+    [SerializeField] private TextMeshProUGUI logText;
+    private Coroutine clearLogRoutine;
+
+    [Header("Indicador de Espectadores")]
+    [SerializeField] private GameObject spectatorCountPanel;
+    [SerializeField] private TextMeshProUGUI spectatorCountText;
+
     [Header("Sprites de cifras")]
     [SerializeField] private Sprite spriteZero;
     [SerializeField] private Sprite spriteOne;
@@ -57,44 +66,53 @@ public class HeadUpDisplayController : MonoBehaviour
     private bool isSpectating = false;
     private CameraController cameraController;
 
-    /// <summary>
-    /// Dejamos el Awake vacío porque en multijugador debemos esperar 
-    /// a que la red nos confirme qué personaje somos antes de encender el HUD.
-    /// </summary>
     private void Awake()
     {
-        // Se ha movido la inicialización a InitializeHUD()
     }
 
     private void Start()
     {
         cameraController = FindFirstObjectByType<CameraController>();
+
+        if (logText != null) logText.text = "";
+        if (logPanel != null) logPanel.SetActive(false);
+        if (spectatorCountPanel != null) spectatorCountPanel.SetActive(false);
     }
 
-    /// <summary>
-    /// Suscribe los eventos de actualización del HUD al habilitar el componente.
-    /// </summary>
     private void OnEnable()
     {
         GameEvents.OnHealthChanged += UpdateHearts;
         GameEvents.OnKeysChanged += UpdateKeys;
         GameEvents.OnDiamondsChanged += UpdateDiamonds;
         GameEvents.OnSpectatorTargetChanged += HandleSpectatorTargetChanged;
+
+        GameManager.OnGameLogMessage += HandleGameLogMessage;
     }
 
-    /// <summary>
-    /// Desuscribe los eventos de actualización del HUD al deshabilitar el componente.
-    /// </summary>
     private void OnDisable()
     {
         GameEvents.OnHealthChanged -= UpdateHearts;
         GameEvents.OnKeysChanged -= UpdateKeys;
         GameEvents.OnDiamondsChanged -= UpdateDiamonds;
         GameEvents.OnSpectatorTargetChanged -= HandleSpectatorTargetChanged;
+
+        GameManager.OnGameLogMessage -= HandleGameLogMessage;
     }
 
     private void Update()
     {
+        if (!isSpectating && GameManager.Instance != null && GameManager.Instance.LocalPlayerController != null)
+        {
+            int viewers = GameManager.Instance.LocalPlayerController.netSpectatorsCount.Value;
+            if (spectatorCountPanel != null)
+            {
+                bool shouldShow = viewers > 0;
+                if (spectatorCountPanel.activeSelf != shouldShow) spectatorCountPanel.SetActive(shouldShow);
+
+                if (shouldShow && spectatorCountText != null) spectatorCountText.text = viewers.ToString();
+            }
+        }
+
         if (!isSpectating || cameraController == null || cameraController.SpectatedPlayer == null) return;
 
         PlayerController spectated = cameraController.SpectatedPlayer;
@@ -119,9 +137,28 @@ public class HeadUpDisplayController : MonoBehaviour
         }
     }
 
+    private void HandleGameLogMessage(string msg)
+    {
+        if (logText == null) return;
+
+        if (logPanel != null) logPanel.SetActive(true);
+        logText.text = msg;
+
+        if (clearLogRoutine != null) StopCoroutine(clearLogRoutine);
+        clearLogRoutine = StartCoroutine(ClearLogAfterDelay(4f));
+    }
+
+    private System.Collections.IEnumerator ClearLogAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (logText != null) logText.text = "";
+        if (logPanel != null) logPanel.SetActive(false);
+    }
+
     public void EnableSpectatorMode()
     {
         isSpectating = true;
+        if (spectatorCountPanel != null) spectatorCountPanel.SetActive(false);
     }
 
     public void DisableSpectatorMode()
@@ -139,9 +176,6 @@ public class HeadUpDisplayController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Método que será llamado por el Jugador cuando ya tenga sus datos de red cargados.
-    /// </summary>
     public void InitializeHUD()
     {
         resolveActiveBlockFromSelectedCharacter();
@@ -154,9 +188,6 @@ public class HeadUpDisplayController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Actualiza los dígitos de vida del bloque de HUD activo.
-    /// </summary>
     public void UpdateHearts(int hearts)
     {
         if (activeBlock == null) return;
@@ -181,9 +212,6 @@ public class HeadUpDisplayController : MonoBehaviour
             activeBlock.imageHeartUnits.sprite = unitsSprite;
     }
 
-    /// <summary>
-    /// Actualiza el dígito de llaves del bloque de HUD activo.
-    /// </summary>
     public void UpdateKeys()
     {
         if (isSpectating) return;
@@ -198,9 +226,6 @@ public class HeadUpDisplayController : MonoBehaviour
             activeBlock.imageKeyUnits.sprite = unitsSprite;
     }
 
-    /// <summary>
-    /// Actualiza los dígitos de diamantes del bloque de HUD activo.
-    /// </summary>
     public void UpdateDiamonds()
     {
         if (isSpectating) return;
@@ -226,9 +251,6 @@ public class HeadUpDisplayController : MonoBehaviour
             activeBlock.imageDiamondUnits.sprite = unitsSprite;
     }
 
-    /// <summary>
-    /// Determina el bloque HUD activo en función del nombre del personaje seleccionado.
-    /// </summary>
     private void resolveActiveBlockFromSelectedCharacter()
     {
         activeBlock = findBlockBySlot(HudSlot.Green);
@@ -244,9 +266,6 @@ public class HeadUpDisplayController : MonoBehaviour
         else if (characterNameLowerCase.Contains("green")) activeBlock = findBlockBySlot(HudSlot.Green);
     }
 
-    /// <summary>
-    /// Busca y devuelve el bloque de HUD asociado al slot indicado.
-    /// </summary>
     private void refreshBlockVisibility()
     {
         if (hudBlocks == null) return;
@@ -274,9 +293,6 @@ public class HeadUpDisplayController : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Devuelve el sprite correspondiente al dígito solicitado.
-    /// </summary>
     private Sprite getSpriteForDigit(int digit)
     {
         return digit switch
